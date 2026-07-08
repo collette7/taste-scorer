@@ -216,26 +216,33 @@ def write_ranked_note(label: str, verdicts: list[dict], rows_by_name: dict, dupe
 
 
 def intake_verdicts(verdicts: list[dict], rows_by_name: dict, threshold) -> int:
+    """Create a full Place note for every verdict that clears `threshold`.
+
+    Every note — go, maybe, skip, or avoid — gets the same schema: enriched
+    frontmatter, a `taste/<verdict>` tag (filterable in Bases), and the
+    one_liner + red_flags in the body explaining WHY it scored where it did.
+    threshold="all" intakes every verdict regardless of score.
+    """
     import intake as intake_mod
+    from enrich import enrich
 
     created = 0
     for v in verdicts:
         score = v.get("weighted_score", 0)
-        if threshold == "go" and v.get("verdict") != "go":
+        if threshold == "all":
+            passes = True
+        elif threshold == "go":
+            passes = v.get("verdict") == "go"
+        else:
+            passes = score >= threshold
+        if not passes:
             continue
-        if isinstance(threshold, int) and score < threshold:
-            continue
+
         row = rows_by_name.get(norm_name(v["candidate"]), {})
-        info = {"name": v["candidate"], "types": [], "localities": [c for c in [row.get("city")] if c]}
-        if row.get("url") and "place_id" in row["url"]:
-            from enrich import enrich
-
-            resolved = enrich(row["url"])
-            if resolved.get("resolved"):
-                info = resolved
-
-        class Args:
-            dry_run = False
+        query = row["url"] if row.get("url") and "place_id" in row.get("url", "") else f"{v['candidate']} {row.get('city', '')}".strip()
+        info = enrich(query)
+        if not info.get("resolved"):
+            info = {"name": v["candidate"], "types": [], "localities": [c for c in [row.get("city")] if c]}
 
         path = REFS / f"{intake_mod.safe_name(v['candidate'])}.md"
         if path.exists():
@@ -261,7 +268,8 @@ def main() -> None:
     ap.add_argument("--parse", action="store_true", help="BYO-model: read verdicts from stdin")
     ap.add_argument("--json", action="store_true", help="Raw JSON verdicts to stdout")
     ap.add_argument("--no-write", action="store_true", help="Skip the ranked note")
-    ap.add_argument("--intake", help='Also create Place notes: "go" or a min score like "7"')
+    ap.add_argument("--intake", help='Also create full Place notes: "all", "go", or a min score like "7". '
+                    "Every note (go/maybe/skip/avoid) is tagged taste/<verdict> and carries the reasoning in the body.")
     args = ap.parse_args()
 
     rows = load_rows(Path(os.path.expanduser(args.csv_path)), args)
@@ -333,9 +341,9 @@ def main() -> None:
         print(f"wrote: {path}", file=sys.stderr)
 
     if args.intake:
-        threshold = "go" if args.intake == "go" else int(args.intake)
-        n = intake_verdicts(verdicts, rows_by_name, threshold)
-        print(f"intook {n} places as notes", file=sys.stderr)
+        threshold = args.intake if args.intake in ("all", "go") else int(args.intake)
+        created = intake_verdicts(verdicts, rows_by_name, threshold)
+        print(f"intook {created} places as notes (tagged by verdict)", file=sys.stderr)
 
 
 if __name__ == "__main__":

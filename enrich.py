@@ -24,7 +24,7 @@ Returns JSON:
 
 API key resolution order:
   1. $TASTE_GMAPS_KEY
-  2. (Obsidian users) QuickAdd plugin settings in the vault, if present
+  2. QuickAdd plugin settings in the Obsidian vault (existing maps.js key)
 
 If no key or no match, returns {"resolved": false, ...} — callers should tell the
 judge the candidate is UNVERIFIED and lower confidence.
@@ -114,6 +114,18 @@ def parse_input(raw: str) -> dict:
 
 PRICE = {0: "free", 1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}
 
+# Google returns official/localized city names that don't match how she
+# actually refers to places in her vault. Normalize at the source so every
+# consumer (intake, batch_intake) gets consistent loc links.
+LOCALITY_ALIASES = {
+    "Ciudad de México": "CDMX",
+    "Mexico City": "CDMX",
+}
+
+
+def normalize_locality(name: str) -> str:
+    return LOCALITY_ALIASES.get(name, name)
+
 
 def _cache_load() -> dict:
     if CACHE_PATH.exists():
@@ -192,7 +204,7 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
         if ref:
             photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={ref}&key={api_key}"
     localities = [
-        c["long_name"]
+        normalize_locality(c["long_name"])
         for c in r.get("address_components", [])
         if any(t in c.get("types", []) for t in ("locality", "sublocality_level_1", "neighborhood", "country"))
     ]
