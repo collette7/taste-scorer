@@ -145,6 +145,9 @@ def main() -> None:
     if not args.candidates:
         ap.error("provide at least one candidate, or use --parse to consume stdin")
 
+    from freshness import ensure_fresh
+
+    ensure_fresh(args.domain, auto=False)
     profile = load_profile(domain=args.domain)
 
     enriched: list[tuple[str, str | None]] = []
