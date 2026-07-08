@@ -167,9 +167,17 @@ lower confidence rather than guess. Lookups are disk-cached.
 ```bash
 python3 list_scorer.py mylist.md --city LA        # extract venues from markdown
                                                   # (tables/bullets/links), rank all
+python3 batch_intake.py places.csv --city Kyoto   # bulk CSV: filter, dedupe, batch-score
+                                                  # -> one ranked go/maybe/skip note
+python3 batch_intake.py places.csv --city Kyoto --min-mentions 2 --limit 30
 python3 gate.py "Some Place" --min-score 6        # exit 0 = clears your bar, 1 = below
                                                   # (for bot notification branching)
 ```
+
+Bulk mode is built for research dumps (thousands of scraped places): it never
+creates a note per row — it writes one ranked table and lets you selectively
+persist only the winners (`--intake go`). Row notes/categories/mentions are fed
+to the judge as evidence, so no enrichment API calls are needed at scale.
 
 ## The scoring math (honest version)
 
@@ -195,6 +203,8 @@ things it predicted, predicted-vs-actual tells you exactly how well it knows you
 | `build_profile.py` | roots → profile (persona, stats, exemplars) |
 | `score.py` | Single-candidate CLI, `--domain`, `--prompt`/`--parse` |
 | `list_scorer.py` | Extract candidates from markdown, batch-score, rank |
+| `batch_intake.py` | Bulk CSV pipeline: filter → dedupe → batch-score → ranked report |
+| `freshness.py` | Auto-refresh stale profiles when your ratings change |
 | `gate.py` | Score-only + exit-code branching |
 | `enrich.py` / `enrich_tmdb.py` | Places / TMDB fact resolution, cached |
 | `domains/*.json` | Domain specs (question, dimensions, enricher) |
