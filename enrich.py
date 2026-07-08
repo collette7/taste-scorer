@@ -24,7 +24,7 @@ Returns JSON:
 
 API key resolution order:
   1. $TASTE_GMAPS_KEY
-  2. QuickAdd plugin settings in the Obsidian vault (existing maps.js key)
+  2. (Obsidian users) QuickAdd plugin settings in the vault, if present
 
 If no key or no match, returns {"resolved": false, ...} — callers should tell the
 judge the candidate is UNVERIFIED and lower confidence.
