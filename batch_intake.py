@@ -115,8 +115,15 @@ def norm_name(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
-def existing_vault_names() -> dict[str, str]:
+def existing_known_names() -> dict[str, str]:
     names = {}
+    try:
+        from root import all_records, build_roots
+
+        for rec in all_records(build_roots()):
+            names[norm_name(rec["name"])] = rec["name"]
+    except Exception as e:
+        print(f"  (roots dedupe unavailable: {e})", file=sys.stderr)
     if REFS.exists():
         for md in REFS.rglob("*.md"):
             names[norm_name(md.stem)] = md.stem
@@ -124,7 +131,7 @@ def existing_vault_names() -> dict[str, str]:
 
 
 def dedupe(rows: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
-    vault = existing_vault_names()
+    known = existing_known_names()
     fresh, dupes = [], []
     seen: set[str] = set()
     for r in rows:
@@ -132,8 +139,8 @@ def dedupe(rows: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
         if not key or key in seen:
             continue
         seen.add(key)
-        if key in vault:
-            dupes.append((r["name"], vault[key]))
+        if key in known:
+            dupes.append((r["name"], known[key]))
         else:
             fresh.append(r)
     return fresh, dupes
