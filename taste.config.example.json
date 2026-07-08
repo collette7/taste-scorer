@@ -1,0 +1,8 @@
+{
+  "roots": [
+    {"kind": "csv", "path": "~/my_ratings.csv"},
+    {"kind": "json", "path": "~/ratings.json"}
+  ],
+  "scale_max": 7,
+  "gate": {"min_score": 6}
+}

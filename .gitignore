@@ -1,0 +1,5 @@
+taste.config.json
+taste_profile*.json
+.enrich_cache.json
+.enrich_tmdb_cache.json
+__pycache__/

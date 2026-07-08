@@ -1,0 +1,19 @@
+{
+  "name": "movies",
+  "category": "Movies",
+  "unit": "film",
+  "unit_plural": "films",
+  "judge_question": "Is this film worth the user's watch time?",
+  "candidate_types": "feature|documentary|animation|short|other",
+  "type_field_values": [],
+  "enricher": "tmdb",
+  "signal_fields": ["genre", "director", "tags"],
+  "dimensions": [
+    ["craft_quality", "Direction, writing, performances — at the level of the user's 7-rated films?"],
+    ["tone_fit", "Tonal/vibe match against the persona's beloved vs anti-signal films (pacing, mood, sensibility)."],
+    ["genre_signal", "How do this film's genres score against the user's genre stats (genre_stats)?"],
+    ["auteur_signal", "Director/creator track record in the user's data (director_stats) — has the user rated their other work?"],
+    ["similarity_to_loved", "Closest analog among the user's top-rated films. Name it."],
+    ["anti_signal_risk", "Resemblance to the user's lowest-rated films. HIGHER score = LESS risk."]
+  ]
+}

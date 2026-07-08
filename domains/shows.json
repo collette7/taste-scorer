@@ -1,0 +1,19 @@
+{
+  "name": "shows",
+  "category": "Shows",
+  "unit": "show",
+  "unit_plural": "shows",
+  "judge_question": "Is this show worth the user's watch time?",
+  "candidate_types": "drama|comedy|documentary|anime|reality|other",
+  "type_field_values": [],
+  "enricher": "tmdb",
+  "signal_fields": ["genre", "tags"],
+  "dimensions": [
+    ["craft_quality", "Writing, performances, production — at the level of the user's 7-rated shows?"],
+    ["tone_fit", "Tonal/vibe match against beloved vs anti-signal shows (pacing, mood, sensibility)."],
+    ["genre_signal", "Genre scores against the user's genre stats."],
+    ["commitment_ratio", "Episode count / seasons vs payoff — does it respect the user's time the way their top-rated shows do?"],
+    ["similarity_to_loved", "Closest analog among the user's top-rated shows. Name it."],
+    ["anti_signal_risk", "Resemblance to the user's lowest-rated shows. HIGHER score = LESS risk."]
+  ]
+}
