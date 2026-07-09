@@ -61,7 +61,7 @@ def collect_notes() -> dict[str, list[tuple[int, str]]]:
             continue
         fm = m.group(1)
         r_m = re.search(r"^rating: *['\"]?([1-7])", fm, re.M)
-        n_m = re.search(r"^(?:review|notes): *(.+)$", fm, re.M)
+        n_m = re.search(r"^review: *(.+)$", fm, re.M) or re.search(r"^notes: *(.+)$", fm, re.M)
         if not (r_m and n_m and n_m.group(1).strip()):
             continue
         tags_section = re.search(r"^tags:\n((?:\s*-\s*.+\n?)+)", fm, re.M)

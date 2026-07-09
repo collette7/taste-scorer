@@ -129,7 +129,8 @@ class ObsidianRoot:
             if isinstance(tags, str):
                 tags = [tags]
             addr = fm.get("address") or ""
-            notes = fm.get("review") or fm.get("notes") or ""
+            has_rating = _coerce_rating(fm.get("rating")) is not None
+            notes = fm.get("review") or (fm.get("notes") if has_rating else "") or ""
             if not isinstance(addr, str):
                 addr = ""
             if not isinstance(notes, str):
