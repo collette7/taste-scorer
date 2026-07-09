@@ -259,7 +259,13 @@ def main() -> None:
     ap.add_argument("csv_path", help="CSV file")
     ap.add_argument("--city", help="Filter: city substring")
     ap.add_argument("--category", help="Filter: category substring")
-    ap.add_argument("--min-mentions", type=int, help="Filter: minimum creator mentions")
+    ap.add_argument("--min-mentions", type=int,
+                    help="Filter: minimum creator mentions. WARNING: mentions is a popularity/"
+                    "reach signal, not a taste signal — using this excludes candidates from "
+                    "scoring entirely, including undiscovered gems with few mentions. Do not use "
+                    "as a default quality gate; prefer scoring everything and letting the judge's "
+                    "taste dimensions (not creator buzz) decide the verdict. Reserve for genuinely "
+                    "narrowing scope (e.g. cost/time limits on a huge one-off dump).")
     ap.add_argument("--awarded-only", action="store_true", help="Filter: only awarded places")
     ap.add_argument("--limit", type=int, help="Cap candidates (cheap pilots)")
     ap.add_argument("--label", help="Ranked-note label (default: auto from filters)")
