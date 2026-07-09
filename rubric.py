@@ -214,7 +214,13 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 def _strip_fence(text: str) -> str:
     text = text.strip()
     m = _FENCE_RE.search(text)
-    return m.group(1).strip() if m else text
+    if m:
+        return m.group(1).strip()
+    if not text.startswith(("{", "[")):
+        start = min((i for i in (text.find("{"), text.find("[")) if i >= 0), default=-1)
+        if start >= 0:
+            return text[start:].strip()
+    return text
 
 
 def parse_verdict(raw: str) -> dict:

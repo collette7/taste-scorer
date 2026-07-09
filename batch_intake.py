@@ -394,11 +394,17 @@ def main() -> None:
         print(f"Scoring {len(candidates)} candidates in {est} batches...", file=sys.stderr)
         for i, batch in enumerate(batches):
             print(f"  batch {i + 1}/{est} ({len(batch)})...", file=sys.stderr)
-            try:
-                raw = call_anthropic(build_batch_prompt(profile, batch))
-                verdicts.extend(parse_batch(raw))
-            except (json.JSONDecodeError, ValueError) as e:
-                print(f"  batch {i + 1} failed: {e}", file=sys.stderr)
+            for attempt in (1, 2, 3):
+                try:
+                    raw = call_anthropic(build_batch_prompt(profile, batch))
+                    verdicts.extend(parse_batch(raw))
+                    break
+                except (json.JSONDecodeError, ValueError) as e:
+                    if attempt < 3:
+                        print(f"  batch {i + 1} attempt {attempt} failed ({e}), retrying...", file=sys.stderr)
+                    else:
+                        print(f"  batch {i + 1} FAILED after 3 attempts: {e}", file=sys.stderr)
+                        print(f"  unscored candidates: {[c['name'] for c in batch]}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(verdicts, indent=2, ensure_ascii=False))
