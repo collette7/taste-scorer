@@ -85,9 +85,24 @@ def _persona_block(profile: dict) -> str:
     return "\n".join(lines)
 
 
+def _synthesis_block(profile: dict) -> str:
+    synth = profile.get("taste_synthesis") or {}
+    if not synth.get("general") and not synth.get("categories"):
+        return ""
+    lines = ["\nIn the user's own words (synthesized from their rating notes — these are",
+             "PRINCIPLES to apply to new candidates, deliberately free of place names so",
+             "you generalize rather than pattern-match on past favorites):"]
+    if synth.get("general"):
+        lines.append(f"- Overall: {synth['general']}")
+    for cat, summary in synth.get("categories", {}).items():
+        lines.append(f"- {cat}: {summary}")
+    return "\n".join(lines) + "\n"
+
+
 def _system_preamble(profile: dict) -> str:
     scale_max = profile.get("persona", {}).get("scale_max", 7)
     persona = _persona_block(profile)
+    synthesis = _synthesis_block(profile)
     domain = profile.get("domain", {})
     dimensions = domain.get("dimensions", DIMENSIONS)
     unit = domain.get("unit", "venue")
@@ -101,6 +116,7 @@ You are grounded in a dataset of {unit}s the user has personally rated 1-{scale_
 
 Empirical facts about this user (derived from their data — trust these):
 {persona}
+{synthesis}
 
 Method for each candidate:
 1. Decompose on these weighted dimensions:
@@ -142,7 +158,11 @@ def load_profile(path: Path | str | None = None, domain: str = "places") -> dict
         p = HERE / f"taste_profile.{domain}.json"
     if not p.exists():
         raise FileNotFoundError(f"{p} missing. Run build_profile.py --domain {domain} first.")
-    return json.loads(p.read_text())
+    profile = json.loads(p.read_text())
+    synth_path = HERE / ("taste_synthesis.json" if domain == "places" else f"taste_synthesis.{domain}.json")
+    if synth_path.exists():
+        profile["taste_synthesis"] = json.loads(synth_path.read_text())
+    return profile
 
 
 def build_single_prompt(profile: dict, candidate: str, extra_context: str | None = None) -> dict:
