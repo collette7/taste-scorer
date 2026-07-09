@@ -18,6 +18,8 @@ Two ways to use it:
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import argparse
 import json
 import os
@@ -137,17 +139,10 @@ def filter_by_city(candidates: list[dict], city: str) -> list[dict]:
 # ---- Model call (Anthropic path) ---------------------------------------------
 
 
-def call_anthropic(prompt: dict, max_tokens: int = 8000) -> str:
-    import anthropic
+def call_llm(prompt: dict, max_tokens: int = 8000) -> str:
+    import llm
 
-    client = anthropic.Anthropic()
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        system=prompt["system"],
-        messages=[{"role": "user", "content": prompt["user"]}],
-    )
-    return "".join(b.text for b in msg.content if b.type == "text").strip()
+    return llm.complete(prompt["system"], prompt["user"], max_tokens=max_tokens)
 
 
 # ---- Output -------------------------------------------------------------------
@@ -330,22 +325,17 @@ def main() -> None:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print(
-            "\nNo ANTHROPIC_API_KEY. Options:\n"
-            "  1. `taste list <note> --prompt` to get batched prompts for your own LLM\n"
-            "  2. `<llm output> | taste list --parse` to validate & rank\n"
-            "  3. `taste list <note> --prep` to just dump extracted candidates\n"
-            "  4. Set ANTHROPIC_API_KEY for direct scoring\n",
-            file=sys.stderr,
-        )
+    import llm
+
+    if llm.detect_provider() is None:
+        print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)
         sys.exit(2)
 
     all_verdicts: list[dict] = []
     for i, batch in enumerate(batches):
         print(f"Scoring batch {i + 1}/{len(batches)} ({len(batch)} candidates)...", file=sys.stderr)
         try:
-            raw = call_anthropic(build_batch_prompt(profile, batch))
+            raw = call_llm(build_batch_prompt(profile, batch))
             all_verdicts.extend(parse_batch(raw))
         except (json.JSONDecodeError, ValueError) as e:
             print(f"batch {i + 1} failed to parse: {e}", file=sys.stderr)

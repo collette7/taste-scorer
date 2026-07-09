@@ -27,6 +27,8 @@ research-style CSVs (Place/City/Category/Notes/Google Maps/Mentions/Awarded).
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import argparse
 import csv
 import json
@@ -43,6 +45,7 @@ HERE = Path(__file__).parent
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
 REFS = VAULT / os.environ.get("TASTE_REFS_DIR", "07 References")
 NOTES_DIR = VAULT / os.environ.get("TASTE_NOTES_DIR", "02 Notes")
+OUTPUT_DIR = Path(os.path.expanduser(os.environ.get("TASTE_OUTPUT_DIR", str(HERE / "taste_notes"))))
 MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 BATCH_SIZE = int(os.environ.get("TASTE_BATCH_SIZE", "10"))
 
@@ -226,17 +229,10 @@ def to_candidate(r: dict) -> dict:
     return {"name": r["name"], "context": " | ".join(b for b in bits if b)}
 
 
-def call_anthropic(prompt: dict, max_tokens: int = 16000) -> str:
-    import anthropic
+def call_llm(prompt: dict, max_tokens: int = 16000) -> str:
+    import llm
 
-    client = anthropic.Anthropic()
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        system=prompt["system"],
-        messages=[{"role": "user", "content": prompt["user"]}],
-    )
-    return "".join(b.text for b in msg.content if b.type == "text").strip()
+    return llm.complete(prompt["system"], prompt["user"], max_tokens=max_tokens)
 
 
 VERDICT_ORDER = {"go": 0, "maybe": 1, "skip": 2, "actively avoid": 3}
@@ -281,16 +277,62 @@ def write_ranked_note(label: str, verdicts: list[dict], rows_by_name: dict, dupe
     return out
 
 
-def intake_verdicts(verdicts: list[dict], rows_by_name: dict, threshold) -> int:
-    """Create a full Place note for every verdict that clears `threshold`.
+def safe_name(name: str) -> str:
+    return re.sub(r'[\\/:*?"<>|]', "", name).strip()
 
-    Every note — go, maybe, skip, or avoid — gets the same schema: enriched
-    frontmatter, a `taste/<verdict>` tag (filterable in Bases), and the
-    one_liner + red_flags in the body explaining WHY it scored where it did.
+
+def _fallback_note_body(info: dict, v: dict, today: str) -> str:
+    """Generic markdown record, used when intake.py (Obsidian-specific note
+    creation) isn't available -- i.e. every non-Obsidian setup. No frontmatter
+    assumptions, no wikilinks, just a readable standalone file."""
+    lines = [
+        f"# {v['candidate']}",
+        "",
+        f"**Verdict: {v.get('verdict', '?').upper()} — {v['weighted_score']}/7** (confidence: {v.get('confidence', '?')})",
+        "",
+        v.get("one_liner", ""),
+        "",
+    ]
+    if info.get("resolved"):
+        lines += [
+            f"- Address: {info.get('formatted_address', '')}",
+            f"- Google rating: {info.get('google_rating', '')} ({info.get('user_ratings_total', '')} reviews)",
+            f"- Type: {'/'.join(info.get('types', []))}",
+            f"- Maps: {info.get('url', '')}",
+            "",
+        ]
+    if v.get("closest_analog"):
+        lines.append(f"Closest analog: {v['closest_analog']}")
+    if v.get("red_flags"):
+        lines.append(f"Red flags: {'; '.join(v['red_flags'])}")
+    lines += ["", "## Dimensions", ""]
+    for d in v.get("dimensions", []):
+        lines.append(f"- **{d['name']}** ({d['score']}/7, weight {d['weight']:.2f}): {d['reason']}")
+    lines += ["", f"_Scored {today}_"]
+    return "\n".join(lines) + "\n"
+
+
+def intake_verdicts(verdicts: list[dict], rows_by_name: dict, threshold) -> int:
+    """Create a full record for every verdict that clears `threshold`.
+
+    Every record — go, maybe, skip, or avoid — carries the full dimension
+    breakdown and the one_liner explaining WHY it scored where it did.
     threshold="all" intakes every verdict regardless of score.
+
+    Uses intake.py's Obsidian-native Place note creation when available
+    (the taste-scorer skill); otherwise falls back to writing plain
+    markdown files into TASTE_OUTPUT_DIR (default: ./taste_notes/) so this
+    works standalone with no vault at all.
     """
-    import intake as intake_mod
     from enrich import enrich
+
+    try:
+        import intake as intake_mod
+        use_obsidian = True
+    except ImportError:
+        intake_mod = None
+        use_obsidian = False
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     created = 0
     for v in verdicts:
@@ -310,12 +352,17 @@ def intake_verdicts(verdicts: list[dict], rows_by_name: dict, threshold) -> int:
         if not info.get("resolved"):
             info = {"name": v["candidate"], "types": [], "localities": [c for c in [row.get("city")] if c]}
 
-        path = REFS / f"{intake_mod.safe_name(v['candidate'])}.md"
-        if path.exists():
-            intake_mod.merge_into_existing(path, v, date.today().isoformat())
+        name = safe_name(v["candidate"])
+        if use_obsidian:
+            path = REFS / f"{name}.md"
+            if path.exists():
+                intake_mod.merge_into_existing(path, v, date.today().isoformat())
+            else:
+                path.write_text(intake_mod.note_body(info, v, date.today().isoformat()))
+            intake_mod.append_daily(name, v, info, date.today().isoformat())
         else:
-            path.write_text(intake_mod.note_body(info, v, date.today().isoformat()))
-        intake_mod.append_daily(intake_mod.safe_name(v["candidate"]), v, info, date.today().isoformat())
+            path = OUTPUT_DIR / f"{name}.md"
+            path.write_text(_fallback_note_body(info, v, date.today().isoformat()))
         created += 1
     return created
 
@@ -380,14 +427,10 @@ def main() -> None:
         raw = sys.stdin.read()
         verdicts = parse_batch(raw)
     else:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            print(
-                "\nNo ANTHROPIC_API_KEY. BYO-model:\n"
-                f"  taste batch <csv> --city {args.city or '...'} --prompt > p.json\n"
-                "  <run each batch through your LLM>\n"
-                f"  cat raw.json | taste batch <csv> --city {args.city or '...'} --parse\n",
-                file=sys.stderr,
-            )
+        import llm
+
+        if llm.detect_provider() is None:
+            print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)
             sys.exit(2)
         verdicts = []
         est = len(batches)
@@ -395,7 +438,7 @@ def main() -> None:
         def score_chunk(chunk: list[dict], label: str) -> bool:
             for attempt in (1, 2):
                 try:
-                    raw = call_anthropic(build_batch_prompt(profile, chunk))
+                    raw = call_llm(build_batch_prompt(profile, chunk))
                     verdicts.extend(parse_batch(raw))
                     return True
                 except (json.JSONDecodeError, ValueError) as e:

@@ -68,10 +68,40 @@ git clone <this repo> && cd taste-scorer
 # deps: python3.10+, pyyaml (only for the Obsidian backend), anthropic (only for direct API mode)
 ```
 
-## 1. Point it at your ratings
+## Quickstart — try it in 60 seconds, no setup
 
-Your **roots** = things you've already rated, on any 1-N scale. Copy
-`taste.config.example.json` → `taste.config.json`:
+The repo ships with `sample_data/ratings.json` (20 fictional but coherent
+ratings) so you can see real output before touching your own data:
+
+```bash
+python3 setup.py --sample     # writes taste.config.json pointed at sample_data/
+python3 build_profile.py      # Balanced rater (mean 5.2/7) ...
+python3 score.py "Blue Bottle Coffee" --json
+```
+
+## Setup wizard — for your own data
+
+```bash
+python3 setup.py
+```
+
+Walks you through:
+1. **Where your ratings live** — CSV, JSON, Obsidian vault, or a mix
+2. **Your rating scale** — 1-5, 1-7 (default), 1-10, or custom; verdict
+   thresholds (go/maybe/skip) adapt automatically
+3. **Gate threshold** — what score counts as "worth it" for `taste gate`
+4. **Where scored output goes** — `TASTE_OUTPUT_DIR` for ranked reports and
+   (if you use `--intake`) per-place records
+5. **API keys** — `ANTHROPIC_API_KEY` (required to run the judge directly),
+   optionally `TASTE_GMAPS_KEY` / `TASTE_TMDB_KEY` for fact-checking
+   candidates before judging. Writes a gitignored `.env`, loaded
+   automatically by every script — no `source` needed, no key ever touches
+   your shell history or gets committed.
+
+No key yet? Skip that step — every script supports the BYO-model pipe
+pattern (`--prompt` / `--parse`) with zero Anthropic dependency.
+
+Prefer manual config? Copy `taste.config.example.json` → `taste.config.json`:
 
 ```json
 {
@@ -84,20 +114,30 @@ Your **roots** = things you've already rated, on any 1-N scale. Copy
 ```
 
 CSV columns are auto-detected (`name/title/place`, `rating/score/stars`,
-`notes/description/comment`, `tags`, `location/city`). Non-standard headers:
+`review/notes/description/comment`, `tags`, `location/city`). Non-standard headers:
 
 ```json
 {"kind": "csv", "path": "~/my.csv", "mapping": {"name": "Restaurant", "rating": "MyScore"}}
 ```
 
-JSON works too — an array of `{"name": ..., "rating": ..., "notes": ...}`.
+JSON works too — an array of `{"name": ..., "rating": ..., "review": ...}`.
 Obsidian users get a vault backend (frontmatter-driven). Multiple roots merge;
 later wins on name collisions.
 
-**The single highest-leverage thing you can do**: write a short `notes` field
+**Letterboxd users**: your export works directly. Settings → Import & Export →
+Export Your Data, then point a root at `ratings.csv` with `"scale_max": 5`:
+
+```json
+{"roots": [{"kind": "csv", "path": "~/letterboxd/ratings.csv"}], "scale_max": 5}
+```
+
+Half-star ratings (3.5, 4.5) round to the nearest integer. Use it with
+`--domain movies` for film-specific judging dimensions.
+
+**The single highest-leverage thing you can do**: write a short `review` field
 on your extreme ratings explaining *why*. "Showy, tourist-trap, trying too hard"
 on a 2 teaches the model your actual anti-signal — without it, the model can
-only guess from tags.
+only guess from tags. (`notes` also still works, as a legacy alias.)
 
 ## 2. Build your profile
 
@@ -106,9 +146,34 @@ python3 build_profile.py
 #   521 records | 96 rated | persona: GENEROUS rater (mean 6.0/7) ...
 ```
 
+## 2b. Synthesize taste principles (optional, recommended)
+
+```bash
+python3 synthesize.py
+```
+
+Distills your `review` text into short per-category preference summaries —
+**with place names deliberately stripped out** — so the judge learns
+transferable principles ("craft + warmth earns top marks, scene-y polish
+loses points") instead of pattern-matching on your specific past favorites.
+Works the same regardless of which root backend you use. Re-run whenever you
+add a batch of new reviews.
+
 ## 3. Score things
 
-**With an Anthropic key** (`ANTHROPIC_API_KEY`):
+**With any configured provider** — the judge runs on whichever LLM you have.
+Set ONE of these (in `.env` via `setup.py`, or exported):
+
+| Env var | Provider | Default model |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic | `claude-haiku-4-5` |
+| `OPENAI_API_KEY` | OpenAI (or any compatible API via `OPENAI_BASE_URL`) | `gpt-4o-mini` |
+| `GEMINI_API_KEY` | Google Gemini | `gemini-2.0-flash` |
+| `OLLAMA_HOST` | Ollama — local models, no key at all | `llama3.1` |
+
+Auto-detected in that order; force one with `TASTE_PROVIDER=<name>`, pick a
+model with `TASTE_MODEL=<model>`. Only the Anthropic path needs an SDK —
+OpenAI/Gemini/Ollama run on stdlib HTTP, zero extra installs.
 
 ```bash
 python3 score.py "Some New Restaurant"
@@ -116,7 +181,8 @@ python3 score.py "Porto cafe A" "Porto cafe B"       # ranked
 python3 score.py --domain movies "Perfect Days"
 ```
 
-**With any other LLM** (the pipe pattern — nothing here requires Anthropic):
+**With no provider at all** (the pipe pattern — works with literally any LLM,
+including chat UIs):
 
 ```bash
 python3 score.py "Some Place" --prompt > p.json      # {system, user} out
@@ -168,16 +234,20 @@ lower confidence rather than guess. Lookups are disk-cached.
 python3 list_scorer.py mylist.md --city LA        # extract venues from markdown
                                                   # (tables/bullets/links), rank all
 python3 batch_intake.py places.csv --city Kyoto   # bulk CSV: filter, dedupe, batch-score
-                                                  # -> one ranked go/maybe/skip note
+                                                  # -> one ranked go/maybe/skip report
 python3 batch_intake.py places.csv --city Kyoto --min-mentions 2 --limit 30
+python3 batch_intake.py places.csv --intake all   # + a per-place record for every verdict
 python3 gate.py "Some Place" --min-score 6        # exit 0 = clears your bar, 1 = below
                                                   # (for bot notification branching)
 ```
 
-Bulk mode is built for research dumps (thousands of scraped places): it never
-creates a note per row — it writes one ranked table and lets you selectively
-persist only the winners (`--intake go`). Row notes/categories/mentions are fed
-to the judge as evidence, so no enrichment API calls are needed at scale.
+Bulk mode is built for research dumps (thousands of scraped places): scoring
+always writes ONE ranked report first (`--min-mentions` narrows scope for cost,
+never as a quality filter — popularity isn't taste). `--intake` additionally
+creates a record per verdict — go, maybe, skip, and avoid all get one, tagged
+by verdict, so nothing is silently dropped. Obsidian users get full enriched
+Place notes; everyone else gets plain markdown files in `TASTE_OUTPUT_DIR`
+(default `./taste_notes/`) automatically, no vault required.
 
 ## The scoring math (honest version)
 
@@ -198,9 +268,14 @@ things it predicted, predicted-vs-actual tells you exactly how well it knows you
 
 | File | What |
 |------|------|
+| `setup.py` | Interactive setup wizard — roots, scale, gate, output dir, API keys |
+| `sample_data/ratings.json` | 20 fictional ratings so `--sample` works with zero setup |
+| `_env.py` | Zero-dependency `.env` loader, imported first by every script |
+| `llm.py` | Provider layer: Anthropic / OpenAI / Gemini / Ollama behind one `complete()` |
 | `rubric.py` | Prompt builder + verdict parser. Stdlib-only, import from anything |
 | `root.py` | Rating-history backends: CSV / JSON / Obsidian |
 | `build_profile.py` | roots → profile (persona, stats, exemplars) |
+| `synthesize.py` | reviews → per-category taste principles (place names stripped) |
 | `score.py` | Single-candidate CLI, `--domain`, `--prompt`/`--parse` |
 | `list_scorer.py` | Extract candidates from markdown, batch-score, rank |
 | `batch_intake.py` | Bulk CSV pipeline: filter → dedupe → batch-score → ranked report |

@@ -31,6 +31,8 @@ judge the candidate is UNVERIFIED and lower confidence.
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import json
 import os
 import re

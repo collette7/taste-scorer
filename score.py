@@ -15,6 +15,8 @@ Two ways to use it:
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import argparse
 import json
 import os
@@ -32,17 +34,10 @@ VAULT_REFS = Path(os.path.expanduser(
 MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 
 
-def call_anthropic(prompt: dict) -> str:
-    import anthropic
+def call_llm(prompt: dict) -> str:
+    import llm
 
-    client = anthropic.Anthropic()
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=1400,
-        system=prompt["system"],
-        messages=[{"role": "user", "content": prompt["user"]}],
-    )
-    return "".join(b.text for b in msg.content if b.type == "text").strip()
+    return llm.complete(prompt["system"], prompt["user"], max_tokens=1400)
 
 
 def format_verdict(v: dict) -> str:
@@ -183,21 +178,16 @@ def main() -> None:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    # Direct mode: call Anthropic API
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print(
-            "\nNo ANTHROPIC_API_KEY set. Options:\n"
-            "  1. `taste \"...\" --prompt` to get the prompt pair for your own LLM\n"
-            "  2. `<your llm output> | taste \"...\" --parse` to validate the response\n"
-            "  3. Or set ANTHROPIC_API_KEY\n",
-            file=sys.stderr,
-        )
+    import llm
+
+    if llm.detect_provider() is None:
+        print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)
         sys.exit(2)
 
     results = []
     for c, ctx in enriched:
         prompt = build_single_prompt(profile, c, ctx)
-        raw = call_anthropic(prompt)
+        raw = call_llm(prompt)
         try:
             results.append(parse_verdict(raw))
         except (json.JSONDecodeError, ValueError) as e:

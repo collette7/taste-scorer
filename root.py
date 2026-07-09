@@ -47,6 +47,8 @@ import re
 from pathlib import Path
 from typing import Iterator
 
+import _env  # noqa: F401 -- loads .env into os.environ on import, before any TASTE_*/ANTHROPIC_API_KEY reads below
+
 HERE = Path(__file__).parent
 CONFIG_PATH = Path(os.environ.get("TASTE_CONFIG", HERE / "taste.config.json"))
 
@@ -92,7 +94,7 @@ class ObsidianRoot:
 
     def __init__(self, vault: str | None = None, refs: str | None = None,
                  category: str = "Places", type_field_values: list[str] | None = None,
-                 signal_fields: list[str] | None = None, **_):
+                 signal_fields: list[str] | None = None, scale_max: int = 7, **_):
         self.vault = Path(os.path.expanduser(
             vault or os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")
         ))
@@ -100,6 +102,7 @@ class ObsidianRoot:
         self.category = category
         self.type_field_values = type_field_values if type_field_values is not None else ["Cities", "Countries", "States"]
         self.signal_fields = signal_fields or ["tags", "loc"]
+        self.scale_max = scale_max
 
     def records(self) -> Iterator[dict]:
         import yaml
@@ -129,7 +132,7 @@ class ObsidianRoot:
             if isinstance(tags, str):
                 tags = [tags]
             addr = fm.get("address") or ""
-            has_rating = _coerce_rating(fm.get("rating")) is not None
+            has_rating = _coerce_rating(fm.get("rating"), self.scale_max) is not None
             notes = fm.get("review") or (fm.get("notes") if has_rating else "") or ""
             if not isinstance(addr, str):
                 addr = ""
@@ -145,7 +148,7 @@ class ObsidianRoot:
 
             rec = {
                 "name": md.stem,
-                "rating": _coerce_rating(fm.get("rating")),
+                "rating": _coerce_rating(fm.get("rating"), self.scale_max),
                 "visited": fm.get("visited") is True or str(fm.get("visited")).lower() == "true"
                            or (isinstance(tags, list) and "watched" in tags),
                 "type": ntype,
@@ -287,15 +290,21 @@ def _root_specs(config: dict) -> list[dict]:
 
 
 def build_roots(config: dict | None = None, overrides: list[dict] | None = None) -> list:
-    """Instantiate root backends from config, or from explicit override specs."""
-    specs = overrides if overrides else _root_specs(config or load_config())
+    """Instantiate root backends from config, or from explicit override specs.
+    The config-level scale_max flows into every backend unless a spec sets
+    its own -- so a 1-5 or 1-10 rater configures the scale once, globally."""
+    config = config or load_config()
+    scale_max = int(config.get("scale_max", 7))
+    specs = overrides if overrides else _root_specs(config)
     backends = []
     for spec in specs:
         kind = spec.get("kind")
         cls = ROOT_KINDS.get(kind)
         if cls is None:
             raise ValueError(f"unknown root kind {kind!r} (have: {sorted(ROOT_KINDS)})")
-        backends.append(cls(**{k: v for k, v in spec.items() if k != "kind"}))
+        kwargs = {k: v for k, v in spec.items() if k != "kind"}
+        kwargs.setdefault("scale_max", scale_max)
+        backends.append(cls(**kwargs))
     return backends
 
 

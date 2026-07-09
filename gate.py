@@ -20,6 +20,8 @@ Exit codes (for bot scripting):
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import argparse
 import json
 import os
@@ -108,26 +110,16 @@ def main() -> None:
         print(json.dumps(prompt, indent=2, ensure_ascii=False))
         return
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print(
-            "\nNo ANTHROPIC_API_KEY. BYO-model flow:\n"
-            f"  taste gate \"{args.candidate}\" --prompt > p.json\n"
-            "  <run your LLM on p.json>\n"
-            "  cat raw.json | taste gate --verdict-json\n",
-            file=sys.stderr,
-        )
+    import llm
+
+    if llm.detect_provider() is None:
+        print(f"\n{llm.NO_PROVIDER_HELP}\n\nOr for gate specifically:\n"
+              f"  gate.py \"{args.candidate}\" --prompt > p.json\n"
+              "  <run your LLM on p.json>\n"
+              "  cat raw.json | gate.py --verdict-json", file=sys.stderr)
         sys.exit(2)
 
-    import anthropic
-
-    client = anthropic.Anthropic()
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=1400,
-        system=prompt["system"],
-        messages=[{"role": "user", "content": prompt["user"]}],
-    )
-    raw = "".join(b.text for b in msg.content if b.type == "text").strip()
+    raw = llm.complete(prompt["system"], prompt["user"], max_tokens=1400)
     try:
         v = parse_verdict(raw)
     except (json.JSONDecodeError, ValueError) as e:

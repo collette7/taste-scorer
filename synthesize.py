@@ -16,6 +16,8 @@ Requires ANTHROPIC_API_KEY (one call, cached until notes change).
 """
 from __future__ import annotations
 
+import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+
 import json
 import os
 import re
@@ -25,8 +27,6 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 OUT = HERE / "taste_synthesis.json"
-VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
-REFS = VAULT / os.environ.get("TASTE_REFS_DIR", "07 References")
 MODEL = os.environ.get("TASTE_MODEL", "claude-haiku-4-5")
 
 GENERIC_TAGS = {"places", "watched", "taste/go", "taste/maybe", "taste/skip", "taste/avoid"}
@@ -52,23 +52,25 @@ THE REVIEWS (rating, then their words):
 """
 
 
+REVIEW_RE = re.compile(r"^REVIEW:\s*(.+?)(?:\s*\|\s*\S.*)?$")
+
+
 def collect_notes() -> dict[str, list[tuple[int, str]]]:
+    """Root-agnostic: works the same whether ratings live in Obsidian, CSV,
+    or JSON, since every backend normalizes to the same record shape and
+    prefixes review text as 'REVIEW: ...' inside `context`."""
+    from root import all_records, build_roots
+
     by_cat: dict[str, list[tuple[int, str]]] = defaultdict(list)
-    for md in REFS.glob("*.md"):
-        text = md.read_text(encoding="utf-8", errors="ignore")
-        m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
-        if not m:
+    for rec in all_records(build_roots()):
+        if rec.get("rating") is None:
             continue
-        fm = m.group(1)
-        r_m = re.search(r"^rating: *['\"]?([1-7])", fm, re.M)
-        n_m = re.search(r"^review: *(.+)$", fm, re.M) or re.search(r"^notes: *(.+)$", fm, re.M)
-        if not (r_m and n_m and n_m.group(1).strip()):
+        m = REVIEW_RE.match(rec.get("context", "") or "")
+        if not m or not m.group(1).strip():
             continue
-        tags_section = re.search(r"^tags:\n((?:\s*-\s*.+\n?)+)", fm, re.M)
-        tags = re.findall(r"-\s*([^\s\"']+)", tags_section.group(1)) if tags_section else []
-        tags = [t for t in tags if t not in GENERIC_TAGS]
+        tags = [t for t in rec.get("tags", []) if t not in GENERIC_TAGS]
         cat = tags[0] if tags else "other"
-        by_cat[cat].append((int(r_m.group(1)), n_m.group(1).strip()))
+        by_cat[cat].append((rec["rating"], m.group(1).strip()))
     return by_cat
 
 
@@ -93,19 +95,15 @@ def build_prompt(by_cat: dict) -> tuple[str, int]:
 
 
 def synthesize() -> dict:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("error: ANTHROPIC_API_KEY required for synthesis", file=sys.stderr)
+    import llm
+
+    if llm.detect_provider() is None:
+        print(f"error: no LLM provider configured for synthesis\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)
         sys.exit(2)
-    import anthropic
 
     by_cat = collect_notes()
     prompt, total = build_prompt(by_cat)
-    client = anthropic.Anthropic()
-    msg = client.messages.create(
-        model=MODEL, max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = "".join(b.text for b in msg.content if b.type == "text").strip()
+    raw = llm.complete("You are a precise taste analyst. Output strict JSON only.", prompt, max_tokens=1500)
     if raw.startswith("```"):
         raw = raw.split("```")[1].lstrip("json\n")
     data = json.loads(raw)

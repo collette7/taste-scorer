@@ -1,0 +1,142 @@
+[
+  {
+    "name": "Meridian Coffee Roasters",
+    "rating": 7,
+    "tags": ["coffee", "neighborhood"],
+    "loc": ["Fictionville"],
+    "review": "Small-batch roaster, owner remembers your order after two visits. Warm, unpretentious, the coffee is genuinely excellent but never the point of the conversation."
+  },
+  {
+    "name": "The Gilded Spoon",
+    "rating": 2,
+    "tags": ["restaurant", "fine-dining"],
+    "loc": ["Fictionville"],
+    "review": "Tasting menu that photographs beautifully and tastes like nothing. Staff recited the provenance of the butter. Felt like a performance, not a meal."
+  },
+  {
+    "name": "Vinyl & Vermouth",
+    "rating": 7,
+    "tags": ["bar", "listening-bar"],
+    "loc": ["Fictionville"],
+    "review": "Record collection curated by the bartender, drinks built around whatever's spinning. Quiet, no TVs, no scene. This is exactly my register."
+  },
+  {
+    "name": "Harbor District Taqueria",
+    "rating": 6,
+    "tags": ["restaurant", "casual"],
+    "loc": ["Port City"],
+    "review": "No-frills, cash only, line out the door at lunch. Salsa verde alone is worth the trip. Zero pretense."
+  },
+  {
+    "name": "Lumen Rooftop Lounge",
+    "rating": 3,
+    "tags": ["bar", "nightlife"],
+    "loc": ["Fictionville"],
+    "review": "Great view, forgettable everything else. Felt like a hotel bar cosplaying as a destination. Cover charge for the privilege."
+  },
+  {
+    "name": "Paper Trail Bindery & Cafe",
+    "rating": 7,
+    "tags": ["shop", "coffee"],
+    "loc": ["Port City"],
+    "review": "Bookbinding workshop up front, coffee counter in back. The kind of place that makes you want to slow down. Bought a hand-stitched notebook I didn't need."
+  },
+  {
+    "name": "Ossuary Museum of Natural Curiosities",
+    "rating": 6,
+    "tags": ["museum", "activity"],
+    "loc": ["Port City"],
+    "review": "Small, weird, genuinely researched. A single dedicated curator's obsession made public. More memorable than any major museum I've been to."
+  },
+  {
+    "name": "Marchetti's Trattoria",
+    "rating": 5,
+    "tags": ["restaurant", "italian"],
+    "loc": ["Fictionville"],
+    "review": "Solid pasta, family-run, nothing wrong with it. Just didn't leave an impression either way."
+  },
+  {
+    "name": "Static Cling Records & Listening Room",
+    "rating": 7,
+    "tags": ["shop", "listening-bar"],
+    "loc": ["Port City"],
+    "review": "Record shop with a proper hi-fi setup in the back you can just sit and listen at. Owner will talk your ear off about pressings if you let him. Perfect."
+  },
+  {
+    "name": "The Tourist Trap Grill",
+    "rating": 1,
+    "tags": ["restaurant", "chain"],
+    "loc": ["Fictionville"],
+    "review": "Menu the size of a phone book, nothing memorable, staff clearly miserable. Only went because a friend insisted. Never again."
+  },
+  {
+    "name": "Kettle & Stone Ceramics",
+    "rating": 6,
+    "tags": ["shop", "craft"],
+    "loc": ["Port City"],
+    "review": "Working ceramics studio that sells seconds out front. Watched someone throwing a bowl while I browsed. Bought two mugs, use them daily."
+  },
+  {
+    "name": "Neon District Nightclub",
+    "rating": 2,
+    "tags": ["bar", "nightlife"],
+    "loc": ["Fictionville"],
+    "review": "Cover charge, bottle service pressure, music too loud to talk. Not my scene at all -- felt like I was supposed to be impressed by the production value."
+  },
+  {
+    "name": "Fernweh Coffee & Tea",
+    "rating": 6,
+    "tags": ["coffee", "matcha"],
+    "loc": ["Port City"],
+    "review": "Matcha program is serious -- ceremonial grade, properly whisked. Small space, always a little crowded, worth the wait."
+  },
+  {
+    "name": "The Anchor Room",
+    "rating": 7,
+    "tags": ["bar", "cocktails"],
+    "loc": ["Port City"],
+    "review": "Bartender asked what I usually drink and built something new from it instead of handing me a menu. Warm wood interior, no music louder than conversation."
+  },
+  {
+    "name": "Provenance Steakhouse",
+    "rating": 3,
+    "tags": ["restaurant", "fine-dining"],
+    "loc": ["Fictionville"],
+    "review": "Good steak, insufferable wine list theater. Sommelier made me feel stupid for asking a question. Paying for the ego, not the food."
+  },
+  {
+    "name": "Corner Kissa",
+    "rating": 7,
+    "tags": ["coffee", "kissa"],
+    "loc": ["Fictionville"],
+    "review": "Siphon coffee, jazz on vinyl, five seats. The owner has run this since before I was born. This is the platonic ideal of a coffee shop for me."
+  },
+  {
+    "name": "Bramblewood Farmers Table",
+    "rating": 6,
+    "tags": ["restaurant", "farm-to-table"],
+    "loc": ["Port City"],
+    "review": "Menu changes weekly based on what the farm actually has. Feels connected to something real rather than a marketing angle."
+  },
+  {
+    "name": "Velvet Rope Speakeasy",
+    "rating": 4,
+    "tags": ["bar", "cocktails"],
+    "loc": ["Fictionville"],
+    "review": "Cocktails were technically good but the whole 'secret password' gimmick felt try-hard. Craft was there, but so was the performance of exclusivity."
+  },
+  {
+    "name": "Driftwood General Store",
+    "rating": 6,
+    "tags": ["shop", "general"],
+    "loc": ["Port City"],
+    "review": "Hardware, snacks, and genuinely good coffee at the counter. The kind of place that's the actual heart of a small town."
+  },
+  {
+    "name": "Anchovy & Salt",
+    "rating": 7,
+    "tags": ["restaurant", "seafood"],
+    "loc": ["Port City"],
+    "review": "Chef runs the counter himself, six seats, whatever came off the boat that morning. No menu, just tells you what you're eating. Best meal I've had in years."
+  }
+]
