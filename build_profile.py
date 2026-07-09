@@ -25,6 +25,35 @@ from root import all_records, build_roots, load_config
 
 OUT = Path(__file__).parent / "taste_profile.json"
 
+GENERIC_TAGS = {"places", "watched", "taste/go", "taste/maybe", "taste/skip", "taste/avoid"}
+
+
+def primary_tag(r: dict) -> str:
+    specific = [t for t in r.get("tags", []) if t not in GENERIC_TAGS]
+    return specific[0] if specific else (r.get("type") or "other")
+
+
+def stratified_pick(entries: list[dict], cap: int) -> list[dict]:
+    """Round-robin across distinct tags so exemplars cover many categories
+    instead of whichever N happen first in file iteration order (the bug:
+    a coffee-shop candidate kept being shown a furniture-shop exemplar
+    just because it sorted first within the same rating)."""
+    by_tag: dict[str, list[dict]] = defaultdict(list)
+    for r in entries:
+        by_tag[primary_tag(r)].append(r)
+    for group in by_tag.values():
+        group.sort(key=lambda x: -x["rating"])
+    picked, i = [], 0
+    tags_cycle = list(by_tag.keys())
+    while len(picked) < cap and any(by_tag.values()):
+        tag = tags_cycle[i % len(tags_cycle)]
+        if by_tag[tag]:
+            picked.append(by_tag[tag].pop(0))
+        i += 1
+        if i > cap * len(tags_cycle):
+            break
+    return picked
+
 
 def derive_persona(rated: list[dict], scale_max: int) -> dict:
     """Compute rater tendencies from the data instead of hardcoding them."""
@@ -65,7 +94,7 @@ def derive_persona(rated: list[dict], scale_max: int) -> dict:
         ],
         "beloved_examples": [
             {"name": r["name"], "rating": r["rating"], "tags": r["tags"], "loc": r["loc"], "context": r["context"][:120]}
-            for r in sorted(highs, key=lambda x: -x["rating"])[:8]
+            for r in stratified_pick(highs, cap=12)
         ],
     }
 
@@ -95,13 +124,17 @@ def collect(records: list[dict], scale_max: int) -> dict:
     low = [r for r in rated if r["rating"] <= scale_max // 2]
 
     exemplars = defaultdict(list)
-    for r in sorted(rated, key=lambda x: -x["rating"]):
-        if len(exemplars[r["rating"]]) < 6:
+    by_rating = defaultdict(list)
+    for r in rated:
+        by_rating[r["rating"]].append(r)
+    for rating, entries in by_rating.items():
+        cap = 10 if rating >= scale_max - 1 else 6
+        for r in stratified_pick(entries, cap):
             ex = {"name": r["name"], "type": r["type"], "tags": r["tags"], "loc": r["loc"]}
             for field in ("genre", "director", "year"):
                 if r.get(field):
                     ex[field] = r[field]
-            exemplars[r["rating"]].append(ex)
+            exemplars[rating].append(ex)
 
     def entry(r, with_context=False):
         e = {"name": r["name"], "rating": r["rating"], "tags": r["tags"], "loc": r["loc"]}
@@ -124,7 +157,7 @@ def collect(records: list[dict], scale_max: int) -> dict:
         "visited_cities": sorted(
             ({"name": r["name"], "rating": r["rating"]} for r in visited_cities), key=lambda x: x["name"]
         ),
-        "top_places": [entry(r) for r in sorted(top, key=lambda x: -x["rating"])],
+        "top_places": [entry(r) for r in stratified_pick(top, cap=len(top))],
         "low_places": [entry(r, with_context=True) for r in sorted(low, key=lambda x: x["rating"])],
         "tag_stats": stat_dict(tag_ratings)[:40],
         "loc_stats": stat_dict(loc_ratings)[:40],

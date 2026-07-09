@@ -35,7 +35,7 @@ DIMENSIONS: list[tuple[str, str]] = [
     ("atmosphere_fit", "Vibe match against the persona's loved_tags vs disliked_tags and beloved vs anti-signal examples."),
     ("neighborhood_context", "Is it in the kind of area the user's high-rated places cluster in (see loc_stats and beloved_examples)?"),
     ("design_aesthetic", "Physical space craft — does it match the aesthetic implied by the user's top-rated venues?"),
-    ("similarity_to_loved", "How closely does it map to a specific top-rated exemplar in the profile? Name the analog."),
+    ("similarity_to_loved", "How closely does it map to a specific top-rated exemplar in the SAME category (coffee-to-coffee, bar-to-bar, shop-to-shop)? A weaker same-category match beats a strong cross-category one — never cite a shop as the analog for a restaurant just because it's a familiar top-rated name."),
     ("anti_signal_risk", "How much does it resemble the persona's anti_signal_examples? HIGHER score = LESS risk. Max score = zero red flags."),
 ]
 
@@ -112,7 +112,7 @@ Method for each candidate:
      {scale_max - 2}      → "maybe"
      {scale_max - 3}      → "skip"
      <={scale_max - 4}    → "actively avoid"
-5. closest_analog: one or more profile note names, verbatim, ' / '-separated. Reasoning about them belongs in the similarity_to_loved dimension's reason, never in this field.
+5. closest_analog: one or more profile note names, verbatim, ' / '-separated. Must match the candidate's category (don't cite a furniture shop as the analog for a restaurant). Scan the full exemplar list for the best category match — don't default to whichever name appears first or most often. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples."""
 
 
