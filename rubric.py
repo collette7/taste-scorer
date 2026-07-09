@@ -50,13 +50,13 @@ SINGLE_SCHEMA = """{
     {"name": "...", "score": 1-7, "weight": 0.0-1.0, "reason": "..."}
   ],
   "closest_analog": "vault note name it most resembles",
-  "exemplars_cited": ["<top-rated item from the profile>", ...],
+  "exemplars_cited": ["Kohiko Coffee House", ...],
   "red_flags": ["..."],
   "one_liner": "single sentence — is it worth her time?",
   "confidence": "low|medium|high"
 }"""
 
-BATCH_SCHEMA = """{"verdicts": [<one SINGLE_SCHEMA object per input candidate, same order>]}"""
+BATCH_SCHEMA = "{\"verdicts\": [" + SINGLE_SCHEMA + ", ...]}"
 
 
 def _persona_block(profile: dict) -> str:
