@@ -47,9 +47,9 @@ import re
 from pathlib import Path
 from typing import Iterator
 
-import _env  # noqa: F401 -- loads .env into os.environ on import, before any TASTE_*/ANTHROPIC_API_KEY reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 CONFIG_PATH = Path(os.environ.get("TASTE_CONFIG", HERE / "taste.config.json"))
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)

@@ -21,9 +21,11 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
-from root import all_records, build_roots, load_config
+from taste.root import all_records, build_roots, load_config
 
-OUT = Path(__file__).parent / "taste_profile.json"
+from taste.paths import PROJECT_ROOT, DOMAINS_DIR
+
+OUT = PROJECT_ROOT / "taste_profile.json"
 
 GENERIC_TAGS = {"places", "watched", "taste/go", "taste/maybe", "taste/skip", "taste/avoid"}
 
@@ -171,9 +173,9 @@ def collect(records: list[dict], scale_max: int) -> dict:
 
 
 def load_domain(name: str) -> dict:
-    path = Path(__file__).parent / "domains" / f"{name}.json"
+    path = DOMAINS_DIR / f"{name}.json"
     if not path.exists():
-        available = sorted(p.stem for p in (Path(__file__).parent / "domains").glob("*.json"))
+        available = sorted(p.stem for p in DOMAINS_DIR.glob("*.json"))
         raise SystemExit(f"unknown domain {name!r} (have: {available})")
     return json.loads(path.read_text())
 
@@ -221,7 +223,7 @@ def main() -> None:
     profile["domain"] = {k: domain[k] for k in ("name", "unit", "judge_question", "candidate_types", "dimensions")}
 
     default_name = "taste_profile.json" if args.domain == "places" else f"taste_profile.{args.domain}.json"
-    out = Path(args.out) if args.out else Path(__file__).parent / default_name
+    out = Path(args.out) if args.out else PROJECT_ROOT / default_name
     out.write_text(json.dumps(profile, indent=2, ensure_ascii=False))
     s = profile["summary"]
     kinds = "+".join(b.kind for b in backends)

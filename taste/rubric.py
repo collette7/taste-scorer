@@ -5,7 +5,7 @@ to get the exact (system, user) prompt pair and a schema validator.
 
 Usage from Hermes (or any bot):
 
-    from rubric import build_single_prompt, build_batch_prompt, parse_verdict, load_profile
+    from taste import build_single_prompt, build_batch_prompt, parse_verdict, load_profile
     profile = load_profile()  # reads taste_profile.json next to this file
     prompt = build_single_prompt(profile, candidate="Fuglen Tokyo")
     raw = my_llm.complete(system=prompt["system"], user=prompt["user"])
@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 PROFILE_PATH = HERE / "taste_profile.json"
 
 RATING_SCALE = """Rating scale:

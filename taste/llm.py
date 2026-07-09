@@ -20,7 +20,7 @@ setup guidance — callers surface the BYO-model pipe pattern as the fallback.
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import json
 import os

@@ -27,7 +27,7 @@ research-style CSVs (Place/City/Category/Notes/Google Maps/Mentions/Awarded).
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import argparse
 import csv
@@ -39,9 +39,9 @@ import unicodedata
 from datetime import date
 from pathlib import Path
 
-from rubric import build_batch_prompt, load_profile, parse_batch
+from taste.rubric import build_batch_prompt, load_profile, parse_batch
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
 REFS = VAULT / os.environ.get("TASTE_REFS_DIR", "07 References")
 NOTES_DIR = VAULT / os.environ.get("TASTE_NOTES_DIR", "02 Notes")
@@ -146,7 +146,7 @@ def existing_known_names() -> tuple[dict[str, str], dict[str, set[str]]]:
     names: dict[str, str] = {}
     fuzzy: dict[str, set[str]] = {}
     try:
-        from root import all_records, build_roots
+        from taste.root import all_records, build_roots
 
         for rec in all_records(build_roots()):
             names[norm_name(rec["name"])] = rec["name"]
@@ -230,7 +230,7 @@ def to_candidate(r: dict) -> dict:
 
 
 def call_llm(prompt: dict, max_tokens: int = 16000) -> str:
-    import llm
+    from taste import llm
 
     return llm.complete(prompt["system"], prompt["user"], max_tokens=max_tokens)
 
@@ -240,8 +240,14 @@ VERDICT_ORDER = {"go": 0, "maybe": 1, "skip": 2, "actively avoid": 3}
 
 def write_ranked_note(label: str, verdicts: list[dict], rows_by_name: dict, dupes: list) -> Path:
     today = date.today().isoformat()
-    NOTES_DIR.mkdir(parents=True, exist_ok=True)
-    out = NOTES_DIR / f"Taste Ranked - {label}.md"
+    try:
+        import intake  # noqa: F401 -- Obsidian setup: ranked notes belong in the vault
+
+        target_dir = NOTES_DIR
+    except ImportError:
+        target_dir = OUTPUT_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    out = target_dir / f"Taste Ranked - {label}.md"
     verdicts = sorted(verdicts, key=lambda v: (VERDICT_ORDER.get(v.get("verdict"), 9), -v.get("weighted_score", 0)))
 
     lines = [
@@ -324,7 +330,7 @@ def intake_verdicts(verdicts: list[dict], rows_by_name: dict, threshold) -> int:
     markdown files into TASTE_OUTPUT_DIR (default: ./taste_notes/) so this
     works standalone with no vault at all.
     """
-    from enrich import enrich
+    from taste.enrich import enrich
 
     try:
         import intake as intake_mod
@@ -412,7 +418,7 @@ def main() -> None:
         print(json.dumps(candidates, indent=2, ensure_ascii=False))
         return
 
-    from freshness import ensure_fresh
+    from taste.freshness import ensure_fresh
 
     ensure_fresh("places", auto=True)
     profile = load_profile()
@@ -427,7 +433,7 @@ def main() -> None:
         raw = sys.stdin.read()
         verdicts = parse_batch(raw)
     else:
-        import llm
+        from taste import llm
 
         if llm.detect_provider() is None:
             print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)

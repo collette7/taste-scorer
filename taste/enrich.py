@@ -31,7 +31,7 @@ judge the candidate is UNVERIFIED and lower confidence.
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import json
 import os
@@ -42,7 +42,9 @@ import urllib.request
 from pathlib import Path
 
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
-CACHE_PATH = Path(__file__).parent / ".enrich_cache.json"
+from taste.paths import cache_path
+
+CACHE_PATH = cache_path(".enrich_cache.json")
 
 FIND_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"

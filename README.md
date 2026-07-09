@@ -74,15 +74,15 @@ The repo ships with `sample_data/ratings.json` (20 fictional but coherent
 ratings) so you can see real output before touching your own data:
 
 ```bash
-python3 setup.py --sample     # writes taste.config.json pointed at sample_data/
-python3 build_profile.py      # Balanced rater (mean 5.2/7) ...
-python3 score.py "Blue Bottle Coffee" --json
+python3 taste.py setup --sample     # writes taste.config.json pointed at sample_data/
+python3 taste.py refresh      # Balanced rater (mean 5.2/7) ...
+python3 taste.py score "Blue Bottle Coffee" --json
 ```
 
 ## Setup wizard — for your own data
 
 ```bash
-python3 setup.py
+python3 taste.py setup
 ```
 
 Walks you through:
@@ -142,14 +142,14 @@ only guess from tags. (`notes` also still works, as a legacy alias.)
 ## 2. Build your profile
 
 ```bash
-python3 build_profile.py
+python3 taste.py refresh
 #   521 records | 96 rated | persona: GENEROUS rater (mean 6.0/7) ...
 ```
 
 ## 2b. Synthesize taste principles (optional, recommended)
 
 ```bash
-python3 synthesize.py
+python3 taste.py synthesize
 ```
 
 Distills your `review` text into short per-category preference summaries —
@@ -176,18 +176,18 @@ model with `TASTE_MODEL=<model>`. Only the Anthropic path needs an SDK —
 OpenAI/Gemini/Ollama run on stdlib HTTP, zero extra installs.
 
 ```bash
-python3 score.py "Some New Restaurant"
-python3 score.py "Porto cafe A" "Porto cafe B"       # ranked
-python3 score.py --domain movies "Perfect Days"
+python3 taste.py score "Some New Restaurant"
+python3 taste.py score "Porto cafe A" "Porto cafe B"       # ranked
+python3 taste.py score --domain movies "Perfect Days"
 ```
 
 **With no provider at all** (the pipe pattern — works with literally any LLM,
 including chat UIs):
 
 ```bash
-python3 score.py "Some Place" --prompt > p.json      # {system, user} out
+python3 taste.py score "Some Place" --prompt > p.json      # {system, user} out
 # run p.json through YOUR model; it returns the JSON verdict
-cat verdict.json | python3 score.py --parse           # validate + pretty-print
+cat verdict.json | python3 taste.py score --parse           # validate + pretty-print
 ```
 
 **Or in-process from your own bot** (three lines, stdlib-only module):
@@ -214,8 +214,8 @@ file — no code changes. Per-domain profiles keep personas separate: being a
 generous rater about food doesn't leak into how the model reads your film scores.
 
 ```bash
-python3 build_profile.py --domain movies
-python3 score.py --domain movies "Aftersun"
+python3 taste.py refresh --domain movies
+python3 taste.py score --domain movies "Aftersun"
 ```
 
 ## Enrichment keys
@@ -231,13 +231,13 @@ lower confidence rather than guess. Lookups are disk-cached.
 ## Batch + gate
 
 ```bash
-python3 list_scorer.py mylist.md --city LA        # extract venues from markdown
+python3 taste.py list mylist.md --city LA        # extract venues from markdown
                                                   # (tables/bullets/links), rank all
-python3 batch_intake.py places.csv --city Kyoto   # bulk CSV: filter, dedupe, batch-score
+python3 taste.py clean places.csv --city Kyoto   # bulk CSV: filter, dedupe, batch-score
                                                   # -> one ranked go/maybe/skip report
-python3 batch_intake.py places.csv --city Kyoto --min-mentions 2 --limit 30
-python3 batch_intake.py places.csv --intake all   # + a per-place record for every verdict
-python3 gate.py "Some Place" --min-score 6        # exit 0 = clears your bar, 1 = below
+python3 taste.py clean places.csv --city Kyoto --min-mentions 2 --limit 30
+python3 taste.py clean places.csv --intake all   # + a per-place record for every verdict
+python3 taste.py gate "Some Place" --min-score 6        # exit 0 = clears your bar, 1 = below
                                                   # (for bot notification branching)
 ```
 
@@ -264,24 +264,41 @@ grounded-LLM-judge, not a statistical model. What keeps it honest: the persona i
 empirical, enrichment is verified, the schema is validated, and once you rate
 things it predicted, predicted-vs-actual tells you exactly how well it knows you.
 
-## Files
+## Layout
 
-| File | What |
-|------|------|
-| `setup.py` | Interactive setup wizard — roots, scale, gate, output dir, API keys |
-| `sample_data/ratings.json` | 20 fictional ratings so `--sample` works with zero setup |
-| `_env.py` | Zero-dependency `.env` loader, imported first by every script |
-| `llm.py` | Provider layer: Anthropic / OpenAI / Gemini / Ollama behind one `complete()` |
-| `rubric.py` | Prompt builder + verdict parser. Stdlib-only, import from anything |
-| `root.py` | Rating-history backends: CSV / JSON / Obsidian |
-| `build_profile.py` | roots → profile (persona, stats, exemplars) |
-| `synthesize.py` | reviews → per-category taste principles (place names stripped) |
-| `score.py` | Single-candidate CLI, `--domain`, `--prompt`/`--parse` |
-| `list_scorer.py` | Extract candidates from markdown, batch-score, rank |
-| `batch_intake.py` | Bulk CSV pipeline: filter → dedupe → batch-score → ranked report |
-| `freshness.py` | Auto-refresh stale profiles when your ratings change |
-| `gate.py` | Score-only + exit-code branching |
-| `enrich.py` / `enrich_tmdb.py` | Places / TMDB fact resolution, cached |
-| `domains/*.json` | Domain specs (question, dimensions, enricher) |
+Project root holds everything you touch; `taste/` holds everything you don't.
+Generated files (profile, synthesis, caches, `taste_notes/`) land at root too.
+
+```
+taste-scorer/
+├── taste.py                     CLI entry point — taste.py <command> [...]
+├── setup.py                     interactive setup wizard
+├── taste.config.example.json    copy to taste.config.json (or let setup write it)
+├── domains/                     domain specs: places / movies / shows — add your own
+├── sample_data/                 bundled demo ratings for `setup --sample`
+└── taste/                       implementation
+    ├── __init__.py              public API for embedding in your own bot
+    ├── rubric.py                prompt builder + verdict parser
+    ├── root.py                  rating backends: CSV / JSON / Obsidian
+    ├── llm.py                   providers: Anthropic / OpenAI / Gemini / Ollama
+    ├── build_profile.py         roots → profile (persona, stats, exemplars)
+    ├── synthesize.py            reviews → taste principles (place names stripped)
+    ├── score.py                 single-candidate judging
+    ├── list_scorer.py           extract + score candidates from markdown
+    ├── batch_intake.py          bulk CSV pipeline (filter/dedupe/score/report)
+    ├── gate.py                  score-only, exit code = verdict (for bots)
+    ├── enrich.py, enrich_tmdb.py  Places / TMDB fact resolution, cached
+    ├── freshness.py             auto-refresh stale profiles
+    ├── paths.py                 canonical file locations
+    └── _env.py                  zero-dependency .env loader
+```
+
+Embedding in your own bot:
+
+```python
+from taste import build_single_prompt, load_profile, parse_verdict
+prompt  = build_single_prompt(load_profile(), "Some Place")
+verdict = parse_verdict(your_llm(system=prompt["system"], user=prompt["user"]))
+```
 
 MIT. Built for personal use; PRs for new domains and root backends welcome.

@@ -16,7 +16,7 @@ Requires ANTHROPIC_API_KEY (one call, cached until notes change).
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import json
 import os
@@ -25,7 +25,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 OUT = HERE / "taste_synthesis.json"
 MODEL = os.environ.get("TASTE_MODEL", "claude-haiku-4-5")
 
@@ -59,7 +59,7 @@ def collect_notes() -> dict[str, list[tuple[int, str]]]:
     """Root-agnostic: works the same whether ratings live in Obsidian, CSV,
     or JSON, since every backend normalizes to the same record shape and
     prefixes review text as 'REVIEW: ...' inside `context`."""
-    from root import all_records, build_roots
+    from taste.root import all_records, build_roots
 
     by_cat: dict[str, list[tuple[int, str]]] = defaultdict(list)
     for rec in all_records(build_roots()):
@@ -95,7 +95,7 @@ def build_prompt(by_cat: dict) -> tuple[str, int]:
 
 
 def synthesize() -> dict:
-    import llm
+    from taste import llm
 
     if llm.detect_provider() is None:
         print(f"error: no LLM provider configured for synthesis\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)

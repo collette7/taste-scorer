@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
 REFS = VAULT / os.environ.get("TASTE_REFS_DIR", "07 References")
 
@@ -47,8 +47,8 @@ def is_stale(domain: str) -> bool:
 
 def refresh(domain: str) -> bool:
     result = subprocess.run(
-        [sys.executable, str(HERE / "build_profile.py"), "--domain", domain],
-        capture_output=True, text=True,
+        [sys.executable, "-m", "taste.build_profile", "--domain", domain],
+        capture_output=True, text=True, cwd=str(HERE),
     )
     if result.returncode != 0:
         print(f"  (refresh failed: {result.stderr.strip()[:200]})", file=sys.stderr)

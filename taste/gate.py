@@ -20,7 +20,7 @@ Exit codes (for bot scripting):
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import argparse
 import json
@@ -28,10 +28,10 @@ import os
 import sys
 from pathlib import Path
 
-from rubric import build_single_prompt, load_profile, parse_verdict
-from root import load_config
+from taste.rubric import build_single_prompt, load_profile, parse_verdict
+from taste.root import load_config
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 
 
@@ -90,7 +90,7 @@ def main() -> None:
     candidate, ctx = args.candidate, args.context
     if not args.no_enrich:
         try:
-            from enrich import enrich as _enrich
+            from taste.enrich import enrich as _enrich
 
             info = _enrich(candidate)
             if info.get("resolved"):
@@ -110,7 +110,7 @@ def main() -> None:
         print(json.dumps(prompt, indent=2, ensure_ascii=False))
         return
 
-    import llm
+    from taste import llm
 
     if llm.detect_provider() is None:
         print(f"\n{llm.NO_PROVIDER_HELP}\n\nOr for gate specifically:\n"

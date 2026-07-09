@@ -15,7 +15,7 @@ Two ways to use it:
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import argparse
 import json
@@ -24,9 +24,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from rubric import build_single_prompt, load_profile, parse_verdict
+from taste.rubric import build_single_prompt, load_profile, parse_verdict
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 VAULT_REFS = Path(os.path.expanduser(
     os.environ.get("TASTE_REFS_PATH",
                    os.path.join(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault"), "07 References"))
@@ -35,7 +35,7 @@ MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 
 
 def call_llm(prompt: dict) -> str:
-    import llm
+    from taste import llm
 
     return llm.complete(prompt["system"], prompt["user"], max_tokens=1400)
 
@@ -140,7 +140,7 @@ def main() -> None:
     if not args.candidates:
         ap.error("provide at least one candidate, or use --parse to consume stdin")
 
-    from freshness import ensure_fresh
+    from taste.freshness import ensure_fresh
 
     ensure_fresh(args.domain, auto=False)
     profile = load_profile(domain=args.domain)
@@ -151,12 +151,12 @@ def main() -> None:
         if not args.no_enrich:
             try:
                 if args.domain in ("movies", "shows"):
-                    from enrich_tmdb import enrich_tmdb
+                    from taste.enrich_tmdb import enrich_tmdb
 
                     info = enrich_tmdb(c, tv=(args.domain == "shows"))
                     source = "TMDB"
                 else:
-                    from enrich import enrich as _enrich
+                    from taste.enrich import enrich as _enrich
 
                     info = _enrich(c)
                     source = "Google Places"
@@ -178,7 +178,7 @@ def main() -> None:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    import llm
+    from taste import llm
 
     if llm.detect_provider() is None:
         print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)

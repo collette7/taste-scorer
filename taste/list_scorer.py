@@ -18,7 +18,7 @@ Two ways to use it:
 """
 from __future__ import annotations
 
-import _env  # noqa: F401 -- loads .env into os.environ before any env reads below
+from taste import _env  # noqa: F401 -- loads .env into os.environ
 
 import argparse
 import json
@@ -28,9 +28,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from rubric import build_batch_prompt, load_profile, parse_batch
+from taste.rubric import build_batch_prompt, load_profile, parse_batch
 
-HERE = Path(__file__).parent
+from taste.paths import PROJECT_ROOT as HERE
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
 MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 BATCH_SIZE = int(os.environ.get("TASTE_BATCH_SIZE", "10"))
@@ -140,7 +140,7 @@ def filter_by_city(candidates: list[dict], city: str) -> list[dict]:
 
 
 def call_llm(prompt: dict, max_tokens: int = 8000) -> str:
-    import llm
+    from taste import llm
 
     return llm.complete(prompt["system"], prompt["user"], max_tokens=max_tokens)
 
@@ -291,7 +291,7 @@ def main() -> None:
 
     if not args.no_enrich and not args.prep:
         try:
-            from enrich import enrich as _enrich
+            from taste.enrich import enrich as _enrich
 
             place_id_re = re.compile(r"place_id[:=][A-Za-z0-9_-]+")
             verified = 0
@@ -325,7 +325,7 @@ def main() -> None:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    import llm
+    from taste import llm
 
     if llm.detect_provider() is None:
         print(f"\n{llm.NO_PROVIDER_HELP}", file=sys.stderr)

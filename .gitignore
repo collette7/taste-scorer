@@ -1,5 +1,8 @@
-taste.config.json
-taste_profile*.json
+__pycache__/
 .enrich_cache.json
 .enrich_tmdb_cache.json
-__pycache__/
+.env
+taste_notes/
+taste_profile*.json
+taste_synthesis*.json
+taste.config.json
