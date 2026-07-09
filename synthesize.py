@@ -11,7 +11,7 @@ Output: taste_synthesis.json next to this script:
   {"generated_from": 49, "categories": {"cocktails": "...", "coffee": "..."},
    "general": "..."}
 
-Run after adding notes: `taste synthesize` (or automatically via refresh).
+Run after adding reviews: `taste synthesize` (or automatically via refresh).
 Requires ANTHROPIC_API_KEY (one call, cached until notes change).
 """
 from __future__ import annotations
@@ -48,7 +48,7 @@ Also write a "general" summary (3-5 sentences) of cross-category patterns.
 Return STRICT JSON only:
 {"categories": {"<category>": "...", ...}, "general": "..."}
 
-THE NOTES (rating, then their words):
+THE REVIEWS (rating, then their words):
 """
 
 
@@ -61,7 +61,7 @@ def collect_notes() -> dict[str, list[tuple[int, str]]]:
             continue
         fm = m.group(1)
         r_m = re.search(r"^rating: *['\"]?([1-7])", fm, re.M)
-        n_m = re.search(r"^notes: *(.+)$", fm, re.M)
+        n_m = re.search(r"^(?:review|notes): *(.+)$", fm, re.M)
         if not (r_m and n_m and n_m.group(1).strip()):
             continue
         tags_section = re.search(r"^tags:\n((?:\s*-\s*.+\n?)+)", fm, re.M)

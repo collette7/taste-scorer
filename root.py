@@ -129,12 +129,12 @@ class ObsidianRoot:
             if isinstance(tags, str):
                 tags = [tags]
             addr = fm.get("address") or ""
-            notes = fm.get("notes") or ""
+            notes = fm.get("review") or fm.get("notes") or ""
             if not isinstance(addr, str):
                 addr = ""
             if not isinstance(notes, str):
                 notes = " ".join(str(n) for n in notes) if isinstance(notes, list) else ""
-            context = f"NOTES: {notes} | {addr}" if notes else addr
+            context = f"REVIEW: {notes} | {addr}" if notes else addr
 
             extra_signals = {}
             for field in self.signal_fields:
@@ -169,7 +169,7 @@ CSV_ALIASES = {
     "type": {"type", "category", "kind"},
     "tags": {"tags", "labels"},
     "loc": {"location", "loc", "city", "area"},
-    "context": {"description", "notes", "address", "comment"},
+    "context": {"review", "description", "notes", "address", "comment"},
     "visited": {"visited", "been"},
 }
 
@@ -254,10 +254,10 @@ class JSONRoot:
             if not isinstance(r, dict) or not r.get("name"):
                 continue
             rating = _coerce_rating(r.get("rating"), self.scale_max)
-            notes = str(r.get("notes", "")).strip()
+            notes = str(r.get("review", "") or r.get("notes", "")).strip()
             context = str(r.get("context", "")).strip()
             if notes:
-                context = f"NOTES: {notes}" + (f" | {context}" if context else "")
+                context = f"REVIEW: {notes}" + (f" | {context}" if context else "")
             yield {
                 "name": str(r["name"]),
                 "rating": rating,

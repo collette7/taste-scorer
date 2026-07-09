@@ -51,7 +51,7 @@ COL_ALIASES = {
     "city": ["city"],
     "category": ["category", "type", "kind"],
     "area": ["area / address", "area", "address", "neighborhood"],
-    "notes": ["notes", "description", "comment"],
+    "notes": ["review", "notes", "description", "comment"],
     "mentions": ["mentions"],
     "awarded": ["awarded"],
     "hours": ["hours"],
