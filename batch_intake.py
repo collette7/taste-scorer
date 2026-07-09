@@ -226,7 +226,7 @@ def to_candidate(r: dict) -> dict:
     return {"name": r["name"], "context": " | ".join(b for b in bits if b)}
 
 
-def call_anthropic(prompt: dict, max_tokens: int = 8000) -> str:
+def call_anthropic(prompt: dict, max_tokens: int = 16000) -> str:
     import anthropic
 
     client = anthropic.Anthropic()
@@ -392,19 +392,25 @@ def main() -> None:
         verdicts = []
         est = len(batches)
         print(f"Scoring {len(candidates)} candidates in {est} batches...", file=sys.stderr)
+        def score_chunk(chunk: list[dict], label: str) -> bool:
+            for attempt in (1, 2):
+                try:
+                    raw = call_anthropic(build_batch_prompt(profile, chunk))
+                    verdicts.extend(parse_batch(raw))
+                    return True
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"  {label} attempt {attempt} failed ({e})" + (", retrying..." if attempt == 1 else ""), file=sys.stderr)
+            return False
+
         for i, batch in enumerate(batches):
             print(f"  batch {i + 1}/{est} ({len(batch)})...", file=sys.stderr)
-            for attempt in (1, 2, 3):
-                try:
-                    raw = call_anthropic(build_batch_prompt(profile, batch))
-                    verdicts.extend(parse_batch(raw))
-                    break
-                except (json.JSONDecodeError, ValueError) as e:
-                    if attempt < 3:
-                        print(f"  batch {i + 1} attempt {attempt} failed ({e}), retrying...", file=sys.stderr)
-                    else:
-                        print(f"  batch {i + 1} FAILED after 3 attempts: {e}", file=sys.stderr)
-                        print(f"  unscored candidates: {[c['name'] for c in batch]}", file=sys.stderr)
+            if score_chunk(batch, f"batch {i + 1}"):
+                continue
+            print(f"  batch {i + 1}: splitting in half (halves output size — truncation-proof)...", file=sys.stderr)
+            mid = len(batch) // 2 or 1
+            for half_label, half in ((f"batch {i + 1}a", batch[:mid]), (f"batch {i + 1}b", batch[mid:])):
+                if half and not score_chunk(half, half_label):
+                    print(f"  {half_label} FAILED — unscored: {[c['name'] for c in half]}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(verdicts, indent=2, ensure_ascii=False))
