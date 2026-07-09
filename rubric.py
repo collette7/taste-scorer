@@ -49,7 +49,7 @@ SINGLE_SCHEMA = """{
   "dimensions": [
     {"name": "...", "score": 1-7, "weight": 0.0-1.0, "reason": "..."}
   ],
-  "closest_analog": "vault note name it most resembles",
+  "closest_analog": "EXACT note name(s) from the profile, separated by ' / ' if more than one — no scores, no commentary, no parentheses. Each becomes a wikilink; commentary breaks them. Empty string if no analog fits.",
   "exemplars_cited": ["<top-rated item from the profile>", ...],
   "red_flags": ["..."],
   "one_liner": "single sentence — is it worth her time?",
@@ -112,7 +112,7 @@ Method for each candidate:
      {scale_max - 2}      → "maybe"
      {scale_max - 3}      → "skip"
      <={scale_max - 4}    → "actively avoid"
-5. Name the closest_analog from the profile. Cite 2-4 exemplars.
+5. closest_analog: one or more profile note names, verbatim, ' / '-separated. Reasoning about them belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples."""
 
 
