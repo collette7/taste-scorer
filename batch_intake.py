@@ -115,23 +115,86 @@ def norm_name(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
-def existing_known_names() -> dict[str, str]:
-    names = {}
+WORD_RE = re.compile(r"[a-z0-9]+")
+# Substring/word-subset matches against these are meaningless on their own
+# (geographic entities and generic descriptors legitimately appear inside
+# many unrelated venue names — e.g. "Midnight Runners Mexico City" contains
+# "Mexico City" without being the same place as the city note).
+GEO_TYPES = {"cities", "countries", "states"}
+STOPWORDS = {
+    "bar", "cafe", "café", "restaurant", "restaurante", "the", "la", "el", "de",
+    "and", "y", "house", "room", "club", "coffee", "kitchen", "bistro", "cocina",
+}
+
+
+def word_set(name: str) -> set[str]:
+    return {w for w in WORD_RE.findall(name.lower()) if len(w) >= 3}
+
+
+def existing_known_names() -> tuple[dict[str, str], dict[str, set[str]]]:
+    """Returns (exact-name lookup, word-set index for fuzzy matching).
+
+    Geographic notes (Cities/Countries/States) are excluded from the fuzzy
+    pool — only exact matches count for them.
+    """
+    import yaml
+
+    names: dict[str, str] = {}
+    fuzzy: dict[str, set[str]] = {}
     try:
         from root import all_records, build_roots
 
         for rec in all_records(build_roots()):
             names[norm_name(rec["name"])] = rec["name"]
+            if rec.get("type") not in ("Cities", "Countries", "States"):
+                ws = word_set(rec["name"]) - STOPWORDS
+                if ws:
+                    fuzzy[rec["name"]] = ws
     except Exception as e:
         print(f"  (roots dedupe unavailable: {e})", file=sys.stderr)
+
     if REFS.exists():
         for md in REFS.rglob("*.md"):
             names[norm_name(md.stem)] = md.stem
-    return names
+            is_geo = False
+            try:
+                text = md.read_text(encoding="utf-8", errors="ignore")
+                m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+                if m:
+                    fm = yaml.safe_load(m.group(1)) or {}
+                    types = fm.get("type") or []
+                    types = [types] if isinstance(types, str) else types
+                    is_geo = any(
+                        g in re.sub(r"[\[\]\"']", "", str(t)).strip().lower()
+                        for t in types for g in GEO_TYPES
+                    )
+            except Exception:
+                pass
+            if not is_geo:
+                ws = word_set(md.stem) - STOPWORDS
+                if ws:
+                    fuzzy[md.stem] = ws
+    return names, fuzzy
+
+
+def fuzzy_match(candidate_name: str, fuzzy_index: dict[str, set[str]]) -> str | None:
+    """Word-subset match: if every (non-stopword) word of the shorter name
+    appears in the longer name, treat as the same venue. Requires at least
+    one shared word of real length to avoid coincidental collisions."""
+    cand_ws = word_set(candidate_name) - STOPWORDS
+    if not cand_ws:
+        return None
+    for known_name, known_ws in fuzzy_index.items():
+        if not known_ws:
+            continue
+        smaller, larger = (cand_ws, known_ws) if len(cand_ws) <= len(known_ws) else (known_ws, cand_ws)
+        if smaller and smaller.issubset(larger):
+            return known_name
+    return None
 
 
 def dedupe(rows: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
-    known = existing_known_names()
+    known, fuzzy_index = existing_known_names()
     fresh, dupes = [], []
     seen: set[str] = set()
     for r in rows:
@@ -141,6 +204,10 @@ def dedupe(rows: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
         seen.add(key)
         if key in known:
             dupes.append((r["name"], known[key]))
+            continue
+        match = fuzzy_match(r["name"], fuzzy_index)
+        if match:
+            dupes.append((r["name"], match))
         else:
             fresh.append(r)
     return fresh, dupes
