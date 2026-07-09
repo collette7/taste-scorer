@@ -42,6 +42,7 @@ from rubric import build_batch_prompt, load_profile, parse_batch
 HERE = Path(__file__).parent
 VAULT = Path(os.path.expanduser(os.environ.get("TASTE_VAULT_PATH", "~/Documents/Obsidian Vault")))
 REFS = VAULT / os.environ.get("TASTE_REFS_DIR", "07 References")
+NOTES_DIR = VAULT / os.environ.get("TASTE_NOTES_DIR", "02 Notes")
 MODEL = os.environ.get("TASTE_MODEL", "claude-sonnet-4-5")
 BATCH_SIZE = int(os.environ.get("TASTE_BATCH_SIZE", "10"))
 
@@ -243,15 +244,13 @@ VERDICT_ORDER = {"go": 0, "maybe": 1, "skip": 2, "actively avoid": 3}
 
 def write_ranked_note(label: str, verdicts: list[dict], rows_by_name: dict, dupes: list) -> Path:
     today = date.today().isoformat()
-    out = REFS / f"Taste Ranked - {label}.md"
+    NOTES_DIR.mkdir(parents=True, exist_ok=True)
+    out = NOTES_DIR / f"Taste Ranked - {label}.md"
     verdicts = sorted(verdicts, key=lambda v: (VERDICT_ORDER.get(v.get("verdict"), 9), -v.get("weighted_score", 0)))
 
     lines = [
         "---",
-        "category:",
-        '- "[[Places]]"',
         "tags:",
-        "- places",
         "- taste-ranked-list",
         f"created: {today}",
         "cssclasses:",
