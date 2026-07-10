@@ -210,7 +210,7 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
     localities = [
         normalize_locality(c["long_name"])
         for c in r.get("address_components", [])
-        if any(t in c.get("types", []) for t in ("locality", "sublocality_level_1", "neighborhood", "country"))
+        if any(t in c.get("types", []) for t in ("locality", "sublocality_level_1", "neighborhood", "administrative_area_level_1", "country"))
     ]
     return {
         "name": r.get("name", parsed["value"]),
