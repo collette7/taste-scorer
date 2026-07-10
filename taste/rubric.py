@@ -252,3 +252,4 @@ def _validate_verdict(v: Any) -> None:
         raise ValueError(f"weighted_score must be int 1-7, got {v['weighted_score']!r}")
     if v["verdict"] not in {"go", "maybe", "skip", "actively avoid"}:
         raise ValueError(f"invalid verdict {v['verdict']!r}")
+    v["verdict"] = VERDICT_FROM_SCORE[v["weighted_score"]]
