@@ -269,7 +269,8 @@ def write_ranked_note(label: str, verdicts: list[dict], rows_by_name: dict, dupe
     ]
     for v in verdicts:
         row = rows_by_name.get(norm_name(v["candidate"]), {})
-        analog = f"[[{v['closest_analog']}]]" if v.get("closest_analog") else ""
+        raw_analog = v.get("closest_analog", "")
+        analog = raw_analog if "[[" in raw_analog else (f"[[{raw_analog}]]" if raw_analog else "")
         one = v.get("one_liner", "").replace("|", "\\|")
         maps = f"[map]({row['url']})" if row.get("url") else ""
         lines.append(
