@@ -13,7 +13,7 @@
     ["atmosphere_fit", "Vibe match against the persona's loved_tags vs disliked_tags and beloved vs anti-signal examples."],
     ["neighborhood_context", "Is it in the kind of area the user's high-rated places cluster in (see loc_stats and beloved_examples)?"],
     ["design_aesthetic", "Physical space craft — does it match the aesthetic implied by the user's top-rated venues?"],
-    ["similarity_to_loved", "How closely does it map to a specific top-rated exemplar in the profile? Name the analog."],
+    ["similarity_to_loved", "How closely does it map to a specific top-rated exemplar with the SAME experience format — what you actually do there and how it operates — not just shared tags like 'listening' or 'cocktails'? A solo-run food kissa, a dance club hosting listening sessions, and a craft cocktail bar are three different formats. Name the analog only if it's a true format match; score lower if none exists."],
     ["anti_signal_risk", "How much does it resemble the persona's anti_signal_examples? HIGHER score = LESS risk. Max score = zero red flags."]
   ]
 }

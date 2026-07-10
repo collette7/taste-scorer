@@ -35,7 +35,7 @@ DIMENSIONS: list[tuple[str, str]] = [
     ("atmosphere_fit", "Vibe match against the persona's loved_tags vs disliked_tags and beloved vs anti-signal examples."),
     ("neighborhood_context", "Is it in the kind of area the user's high-rated places cluster in (see loc_stats and beloved_examples)?"),
     ("design_aesthetic", "Physical space craft — does it match the aesthetic implied by the user's top-rated venues?"),
-    ("similarity_to_loved", "How closely does it map to a specific top-rated exemplar in the SAME category (coffee-to-coffee, bar-to-bar, shop-to-shop)? A weaker same-category match beats a strong cross-category one — never cite a shop as the analog for a restaurant just because it's a familiar top-rated name."),
+    ("similarity_to_loved", "How closely does it map to a specific top-rated exemplar with the SAME experience format — not just shared tags or category? Match on what you actually do there and how it operates (solo-run food kissa ≠ dance club with listening sessions ≠ craft cocktail bar, even though all touch music/drinks). A weaker same-format match beats a strong keyword match on a famous name. Score honestly lower when no true format twin exists."),
     ("anti_signal_risk", "How much does it resemble the persona's anti_signal_examples? HIGHER score = LESS risk. Max score = zero red flags."),
 ]
 
@@ -49,7 +49,7 @@ SINGLE_SCHEMA = """{
   "dimensions": [
     {"name": "...", "score": 1-7, "weight": 0.0-1.0, "reason": "..."}
   ],
-  "closest_analog": "EXACT note name(s) from the profile, separated by ' / ' if more than one — no scores, no commentary, no parentheses. Each becomes a wikilink; commentary breaks them. Empty string if no analog fits.",
+  "closest_analog": "EXACT note name(s) from the profile, separated by ' / ' if more than one — no scores, no commentary, no parentheses. Each becomes a wikilink; commentary breaks them. Must share the candidate's experience FORMAT, not just tags/keywords. Empty string if no true format match exists — preferred over a misleading analog.",
   "exemplars_cited": ["<top-rated item from the profile>", ...],
   "red_flags": ["..."],
   "one_liner": "single sentence — is it worth her time?",
@@ -128,7 +128,7 @@ Method for each candidate:
      {scale_max - 2}      → "maybe"
      {scale_max - 3}      → "skip"
      <={scale_max - 4}    → "actively avoid"
-5. closest_analog: one or more profile note names, verbatim, ' / '-separated. Must match the candidate's category (don't cite a furniture shop as the analog for a restaurant). Scan the full exemplar list for the best category match — don't default to whichever name appears first or most often. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
+5. closest_analog: one or more profile note names, verbatim, ' / '-separated. The analog must match the candidate's actual EXPERIENCE FORMAT — what you physically do there and how the place operates (a solo-run food kissa, a craft cocktail bar, and a dance club hosting listening sessions are three DIFFERENT formats even if all involve music and drinks). Shared tags or surface keywords ("listening", "cocktails", "coffee") are NOT enough. Scan the full exemplar list for a same-format match — don't default to the most famous or most-cited name. If no exemplar truly matches the format, return "" — an empty analog is more useful than a misleading one. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples."""
 
 
