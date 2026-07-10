@@ -207,11 +207,11 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
         ref = photos[0].get("photo_reference", "")
         if ref:
             photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={ref}&key={api_key}"
-    localities = [
+    localities = list(dict.fromkeys(
         normalize_locality(c["long_name"])
         for c in r.get("address_components", [])
         if any(t in c.get("types", []) for t in ("locality", "sublocality_level_1", "neighborhood", "administrative_area_level_1", "country"))
-    ]
+    ))
     return {
         "name": r.get("name", parsed["value"]),
         "resolved": True,
