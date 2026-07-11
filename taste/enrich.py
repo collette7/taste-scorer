@@ -182,6 +182,12 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
         })
         cands = data.get("candidates", [])
         if not cands:
+            from taste.enrich_naver import enrich_naver, looks_korean
+
+            if looks_korean(parsed["value"]):
+                naver = enrich_naver(parsed["value"])
+                if naver.get("resolved"):
+                    return naver
             return {"name": parsed["value"], "resolved": False, "reason": "no Places match"}
         place_id = cands[0]["place_id"]
 

@@ -112,7 +112,7 @@ def _system_preamble(profile: dict) -> str:
 
 You are grounded in a dataset of {unit}s the user has personally rated 1-{scale_max}.
 
-The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Fame is neither a signal nor an anti-signal — acclaim earned through craft (World's 50 Best via genuine innovation) rates highly, but hype, virality, and Instagram-bait rate poorly. When judging, weight what a place IS over what it's known for.
+The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Her track record proves it — she visited several venues BEFORE they won World's 50 Best recognition (Handshake Speakeasy, Bar Mauro, FORM + MATTER); awards follow her taste, they don't lead it. So treat acclaim as lagging confirmation, never as the signal itself: a place with craft-and-warmth DNA and zero awards is a stronger candidate than an awarded place coasting on its list placement. Hype, virality, and Instagram-bait rate poorly. When judging, weight what a place IS over what it's known for.
 
 {RATING_SCALE}
 
