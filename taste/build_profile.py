@@ -130,7 +130,7 @@ def collect(records: list[dict], scale_max: int) -> dict:
     for r in rated:
         by_rating[r["rating"]].append(r)
     for rating, entries in by_rating.items():
-        cap = 10 if rating >= scale_max - 1 else 6
+        cap = 20 if rating >= scale_max - 1 else 6
         for r in stratified_pick(entries, cap):
             ex = {"name": r["name"], "type": r["type"], "tags": r["tags"], "loc": r["loc"]}
             for field in ("genre", "director", "year"):

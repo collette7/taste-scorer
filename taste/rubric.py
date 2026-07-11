@@ -49,7 +49,7 @@ SINGLE_SCHEMA = """{
   "dimensions": [
     {"name": "...", "score": 1-7, "weight": 0.0-1.0, "reason": "..."}
   ],
-  "closest_analog": "wikilink(s) of EXACT note name(s) from the profile, e.g. \\"[[tonlist]]\\" or \\"[[Music Bar Lion]] [[Baltra Bar]]\\" — no scores, no commentary, no parentheses. Must share the candidate's experience FORMAT, not just tags/keywords. Empty string if no true format match exists — preferred over a misleading analog.",
+  "closest_analog": "wikilink(s) of EXACT note name(s) from the profile, e.g. \\"[[tonlist]]\\" or \\"[[Music Bar Lion]] [[Baltra Bar]]\\" — no scores, no commentary, no parentheses. Must share the candidate's experience FORMAT, not just tags/keywords. The user is a tastemaker who prizes deep cuts: prefer the LESS-CITED exemplar that fits the format precisely over a famous name that fits loosely. Empty string if no true format match exists — preferred over a misleading analog.",
   "exemplars_cited": ["<top-rated item from the profile>", ...],
   "red_flags": ["..."],
   "one_liner": "single sentence — is it worth her time?",
@@ -112,6 +112,8 @@ def _system_preamble(profile: dict) -> str:
 
 You are grounded in a dataset of {unit}s the user has personally rated 1-{scale_max}.
 
+The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Fame is neither a signal nor an anti-signal — acclaim earned through craft (World's 50 Best via genuine innovation) rates highly, but hype, virality, and Instagram-bait rate poorly. When judging, weight what a place IS over what it's known for.
+
 {RATING_SCALE}
 
 Empirical facts about this user (derived from their data — trust these):
@@ -128,7 +130,7 @@ Method for each candidate:
      {scale_max - 2}      → "maybe"
      {scale_max - 3}      → "skip"
      <={scale_max - 4}    → "actively avoid"
-5. closest_analog: one or more profile note names, verbatim, each wrapped as a [[wikilink]]. The analog must match the candidate's actual EXPERIENCE FORMAT — what you physically do there and how the place operates (a solo-run food kissa, a craft cocktail bar, and a dance club hosting listening sessions are three DIFFERENT formats even if all involve music and drinks). Shared tags or surface keywords ("listening", "cocktails", "coffee") are NOT enough. Scan the full exemplar list for a same-format match — don't default to the most famous or most-cited name. If no exemplar truly matches the format, return "" — an empty analog is more useful than a misleading one. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
+5. closest_analog: one or more profile note names, verbatim, each wrapped as a [[wikilink]]. The analog must match the candidate's actual EXPERIENCE FORMAT — what you physically do there and how the place operates (a solo-run food kissa, a craft cocktail bar, and a dance club hosting listening sessions are three DIFFERENT formats even if all involve music and drinks). Shared tags or surface keywords ("listening", "cocktails", "coffee") are NOT enough. The user is a tastemaker who prizes deep cuts and hidden gems: her exemplar list is deliberately deep, and the BEST analog is usually a niche one — a 90-year-old proprietor's jazz kissa, a solo-bartender fruit-cocktail omakase, a records-and-lemonade kissa — not the handful of famous names that fit everything loosely. Before defaulting to a frequently-cited exemplar, scan the FULL list for a rarer, tighter format twin; citing the same 3 anchors for every candidate is a scoring failure. If no exemplar truly matches the format, return "" — an empty analog is more useful than a misleading one. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples."""
 
 
@@ -140,7 +142,7 @@ def _compact_profile(profile: dict) -> dict:
         "tag_stats": profile["tag_stats"][:25],
         "loc_stats": profile["loc_stats"][:25],
         "exemplars_by_rating": profile["exemplars"],
-        "top_places_sample": profile["top_places"][:30],
+        "top_places_sample": profile["top_places"][:120],
         "low_places": profile["low_places"],
     }
     for key in ("genre_stats", "director_stats"):
