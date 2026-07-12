@@ -33,7 +33,7 @@ RATING_SCALE = """Rating scale:
 DIMENSIONS: list[tuple[str, str]] = [
     ("product_quality", "Is the actual thing they make (food, coffee, drinks, product) at the level of the user's top-rated equivalents?"),
     ("atmosphere_fit", "Vibe match against the persona's loved_tags vs disliked_tags and beloved vs anti-signal examples."),
-    ("neighborhood_context", "Is it in the kind of area the user's high-rated places cluster in (see loc_stats and beloved_examples)?"),
+    ("neighborhood_context", "Minor, tie-breaking signal only — a WEAK bonus if the area matches her loved clusters, never a penalty for an unfamiliar or 'unproven' neighborhood. A single beloved counter-service taco stand or hole-in-the-wall can easily outrank a whole neighborhood's reputation; don't let geography override product_quality or atmosphere_fit. Weight this dimension low (0.05-0.15) unless the venue's format is explicitly neighborhood-dependent (e.g. a walking district)."),
     ("design_aesthetic", "Physical space craft — does it match the aesthetic implied by the user's top-rated venues?"),
     ("similarity_to_loved", "How closely does it map to a specific top-rated exemplar with the SAME experience format — not just shared tags or category? Match on what you actually do there and how it operates (solo-run food kissa ≠ dance club with listening sessions ≠ craft cocktail bar, even though all touch music/drinks). A weaker same-format match beats a strong keyword match on a famous name. Score honestly lower when no true format twin exists."),
     ("anti_signal_risk", "How much does it resemble the persona's anti_signal_examples? HIGHER score = LESS risk. Max score = zero red flags."),
@@ -112,7 +112,9 @@ def _system_preamble(profile: dict) -> str:
 
 You are grounded in a dataset of {unit}s the user has personally rated 1-{scale_max}.
 
-The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Her track record proves it — she visited several venues BEFORE they won World's 50 Best recognition (Handshake Speakeasy, Bar Mauro, FORM + MATTER); awards follow her taste, they don't lead it. So treat awards as a neutral-to-mild signal, not the signal itself: judge every place on its craft-and-warmth DNA, and never boost or penalize a candidate simply because a list did or didn't notice it yet. Hype, virality, and Instagram-bait rate poorly. When judging, weight what a place IS over what it's known for.
+The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Her track record proves it — she visited several venues BEFORE they won World's 50 Best recognition (Handshake Speakeasy, Bar Mauro, FORM + MATTER); awards follow her taste, they don't lead it. So treat awards as a neutral-to-mild signal, not the signal itself: judge every place on its craft-and-warmth DNA, and never boost or penalize a candidate simply because a list did or didn't notice it yet. When judging, weight what a place IS over what it's known for.
+
+She is NOT anti-upscale — she rates genuine fine dining highly when the craft is real (Sud 777: "Fine dining but in a casual garden setting. Felt natural, not performative" — a 7). Price tier is not an anti-signal. Her actual anti-signals are: (1) overpriced relative to what's delivered — paying a premium without a matching craft/quality payoff, and (2) aesthetic-over-substance traps — places engineered for photos/virality with no craft, taste, or soul behind the surface, at ANY price point (a $8 influencer-bait matcha stand is just as much an anti-signal as a $200 tasting menu coasting on plating). Judge every candidate — cheap or expensive — on whether the craft is real, not on how much it costs or how polished it looks.
 
 {RATING_SCALE}
 
