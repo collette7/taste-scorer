@@ -23,6 +23,18 @@ SEARCH_URL = "https://openapi.naver.com/v1/search/local.json"
 HANGUL_RE = re.compile(r"[\uac00-\ud7af]")
 TAG_RE = re.compile(r"</?b>")
 
+SEOUL_DISTRICTS = {
+    "강남구": "Gangnam District", "강동구": "Gangdong District", "강북구": "Gangbuk District",
+    "강서구": "Gangseo District", "관악구": "Gwanak District", "광진구": "Gwangjin District",
+    "구로구": "Guro District", "금천구": "Geumcheon District", "노원구": "Nowon District",
+    "도봉구": "Dobong District", "동대문구": "Dongdaemun District", "동작구": "Dongjak District",
+    "마포구": "Mapo-gu", "서대문구": "Seodaemun District", "서초구": "Seocho District",
+    "성동구": "Seongdong District", "성북구": "Seongbuk District", "송파구": "Songpa District",
+    "양천구": "Yangcheon District", "영등포구": "Yeongdeungpo District", "용산구": "Yongsan District",
+    "은평구": "Eunpyeong District", "종로구": "Jongno District", "중구": "Jung District",
+    "중랑구": "Jungnang District",
+}
+
 CATEGORY_MAP = {
     "카페": "cafe", "커피": "cafe", "찻집": "cafe", "베이커리": "bakery", "디저트": "cafe",
     "술집": "bar", "바": "bar", "칵테일": "bar", "와인": "bar", "요리주점": "bar",
@@ -100,13 +112,13 @@ def enrich_naver(query: str) -> dict:
 
     localities = []
     for part in address.split():
-        if part.endswith(("특별시", "광역시", "시")) and len(part) > 1:
-            localities.append(part.removesuffix("특별시").removesuffix("광역시"))
-        elif part.endswith(("구", "동", "읍", "면")) and len(part) > 1:
+        if part in SEOUL_DISTRICTS:
+            localities.append(SEOUL_DISTRICTS[part])
+        elif part.endswith(("특별시", "광역시", "시")) and len(part) > 1:
+            city = part.removesuffix("특별시").removesuffix("광역시")
+            localities.append({"서울": "Seoul", "부산": "Busan", "제주": "Jeju", "인천": "Incheon", "대구": "Daegu", "대전": "Daejeon", "광주": "Gwangju", "울산": "Ulsan"}.get(city, city))
+        elif part.endswith(("동", "읍", "면")) and len(part) > 1:
             localities.append(part)
-    if "서울" in address and "Seoul" not in localities:
-        localities = [loc for loc in localities if loc != "서울"]
-        localities.insert(0, "Seoul")
     localities.append("South Korea")
     localities = list(dict.fromkeys(localities))
 
