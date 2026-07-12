@@ -78,7 +78,7 @@ def _post_json(url: str, body: dict, headers: dict, timeout: int = 300) -> dict:
 def _complete_anthropic(system: str, user: str, max_tokens: int) -> str:
     import anthropic
 
-    client = anthropic.Anthropic()
+    client = anthropic.Anthropic(timeout=120.0, max_retries=2)
     msg = client.messages.create(
         model=_model_for("anthropic"), max_tokens=max_tokens,
         system=system, messages=[{"role": "user", "content": user}],
