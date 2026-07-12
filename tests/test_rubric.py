@@ -1,6 +1,19 @@
 import json
 
-from taste.rubric import parse_batch, parse_verdict
+from taste.rubric import build_batch_prompt, build_single_prompt, parse_batch, parse_verdict
+
+
+def minimal_profile() -> dict[str, object]:
+    return {
+        "summary": {"total_records": 1, "rated_count": 1},
+        "persona": {"scale_max": 7, "tendency": "test"},
+        "visited_cities": [],
+        "tag_stats": [],
+        "loc_stats": [],
+        "exemplars": {},
+        "top_places": [],
+        "low_places": [],
+    }
 
 
 def verdict_payload(score: int, verdict: str) -> dict[str, object]:
@@ -43,3 +56,38 @@ def test_parse_batch_derives_each_verdict_from_score() -> None:
 
     # Then: every verdict matches the score rubric.
     assert [item["verdict"] for item in parsed] == ["skip", "actively avoid"]
+
+
+def test_build_single_prompt_prefix_splits_cleanly() -> None:
+    # Given: a minimal profile and a candidate with extra context.
+    profile = minimal_profile()
+
+    # When: the single-venue prompt is built.
+    prompt = build_single_prompt(profile, "Test Place", "some context")
+
+    # Then: the prefix+suffix reconstruct the full user string, the prefix
+    # ends at the profile JSON fence, and the suffix carries the candidate.
+    prefix_len = prompt["user_prefix_len"]
+    prefix, suffix = prompt["user"][:prefix_len], prompt["user"][prefix_len:]
+    assert prefix + suffix == prompt["user"]
+    assert prefix.rstrip().endswith("```")
+    assert "CANDIDATE: Test Place" in suffix
+    assert "CANDIDATE" not in prefix
+
+
+def test_build_batch_prompt_prefix_splits_cleanly() -> None:
+    # Given: a minimal profile and two candidates.
+    profile = minimal_profile()
+    candidates = [{"name": "A"}, {"name": "B"}]
+
+    # When: the batch prompt is built.
+    prompt = build_batch_prompt(profile, candidates)
+
+    # Then: the prefix+suffix reconstruct the full user string, the prefix
+    # ends at the profile JSON fence, and the suffix carries the candidates.
+    prefix_len = prompt["user_prefix_len"]
+    prefix, suffix = prompt["user"][:prefix_len], prompt["user"][prefix_len:]
+    assert prefix + suffix == prompt["user"]
+    assert prefix.rstrip().endswith("```")
+    assert "CANDIDATES" in suffix
+    assert "CANDIDATES" not in prefix

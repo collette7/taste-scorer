@@ -88,6 +88,30 @@ def _get(url: str, params: dict) -> dict:
         return json.loads(resp.read().decode())
 
 
+# Google's 1-5 ratings cluster tightly (most real businesses land 3.5-4.8) and
+# are not proportional to the judge's 1-{scale_max} taste scale. Models
+# reliably copy a bare number across scales despite explicit instructions not
+# to (measured: 52% of a 2000-note rescore batch had weighted_score ==
+# round(gRating)) -- so the judge is shown a qualitative bucket instead of
+# the raw digit, removing the anchor rather than instructing around it. The
+# raw value is still stored on the note/context for humans, just not phrased
+# as a bare number in the judge-facing text.
+def grating_bucket(value: float, count: int) -> str:
+    if value >= 4.6:
+        label = "excellent (Google's top tier)"
+    elif value >= 4.3:
+        label = "very good (solidly above Google's average)"
+    elif value >= 4.0:
+        label = "good (typical/average for a legitimate business on Google)"
+    elif value >= 3.5:
+        label = "mixed (below Google's norm, some real complaints)"
+    elif value >= 3.0:
+        label = "poor (well below Google's norm)"
+    else:
+        label = "very poor (rare on Google, strong red flag)"
+    return f"Google public consensus: {label} ({count} reviews) — this is crowd approval, NOT her taste; do not reuse any number from this bucket as a score"
+
+
 def parse_input(raw: str) -> dict:
     """Classify input: place_id link, maps place link, or bare name."""
     raw = raw.strip()

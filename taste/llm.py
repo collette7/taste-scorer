@@ -75,13 +75,21 @@ def _post_json(url: str, body: dict, headers: dict, timeout: int = 300) -> dict:
         raise ProviderError(f"{url} unreachable: {e.reason}") from e
 
 
-def _complete_anthropic(system: str, user: str, max_tokens: int) -> str:
+def _complete_anthropic(system: str, user: str, max_tokens: int, user_prefix_len: int | None = None) -> str:
     import anthropic
 
     client = anthropic.Anthropic(timeout=120.0, max_retries=2)
+    system_blocks = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+    if user_prefix_len:
+        user_content = [
+            {"type": "text", "text": user[:user_prefix_len], "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": user[user_prefix_len:]},
+        ]
+    else:
+        user_content = user
     msg = client.messages.create(
         model=_model_for("anthropic"), max_tokens=max_tokens,
-        system=system, messages=[{"role": "user", "content": user}],
+        system=system_blocks, messages=[{"role": "user", "content": user_content}],
     )
     return "".join(b.text for b in msg.content if b.type == "text").strip()
 
@@ -151,10 +159,12 @@ Or skip providers entirely with the BYO-model pipe pattern:
   --prompt > p.json   ->  run through ANY LLM  ->  --parse < raw.json"""
 
 
-def complete(system: str, user: str, max_tokens: int = 8000) -> str:
+def complete(system: str, user: str, max_tokens: int = 8000, user_prefix_len: int | None = None) -> str:
     provider = detect_provider()
     if provider is None:
         raise ProviderError(NO_PROVIDER_HELP)
+    if provider == "anthropic":
+        return _complete_anthropic(system, user, max_tokens, user_prefix_len)
     return _COMPLETERS[provider](system, user, max_tokens)
 
 

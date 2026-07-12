@@ -232,7 +232,10 @@ def to_candidate(r: dict) -> dict:
 def call_llm(prompt: dict, max_tokens: int = 16000) -> str:
     from taste import llm
 
-    return llm.complete(prompt["system"], prompt["user"], max_tokens=max_tokens)
+    return llm.complete(
+        prompt["system"], prompt["user"], max_tokens=max_tokens,
+        user_prefix_len=prompt.get("user_prefix_len"),
+    )
 
 
 VERDICT_ORDER = {"go": 0, "maybe": 1, "skip": 2, "actively avoid": 3}

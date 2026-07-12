@@ -51,7 +51,7 @@ SINGLE_SCHEMA = """{
   ],
   "closest_analog": "wikilink(s) of EXACT note name(s) from the profile, e.g. \\"[[tonlist]]\\" or \\"[[Music Bar Lion]] [[Baltra Bar]]\\" — no scores, no commentary, no parentheses. Must share the candidate's experience FORMAT, not just tags/keywords. The user is a tastemaker who prizes deep cuts: prefer the LESS-CITED exemplar that fits the format precisely over a famous name that fits loosely (e.g. a tiny jazz kissa maps to [[JazzHaus POSY]], not [[Kohiko Coffee House]]; a solo-bartender omakase maps to [[Gen Yamamoto]], not [[Double Chicken Please]]). Empty string if no true format match exists — preferred over a misleading analog.",
   "exemplars_cited": ["<top-rated item from the profile>", ...],
-  "awards": ["michelin", "worldsbest", "jamesbeard", ...] or [] — major recognized awards you know this SPECIFIC candidate holds (Michelin star/Bib Gourmand, World's 50 Best, James Beard, etc.), from training knowledge or provided research context. Only include if genuinely known/verified for this exact venue — never guess. Awards are informational, not a scoring boost (see the tastemaker framing above),
+  "awards": ["michelin", "worldsbest", "jamesbeard", "blueribbon", "los250mx", "tabelog", ...] or [] — major recognized awards you know this SPECIFIC candidate holds (Michelin star/Bib Gourmand, World's 50 Best Restaurants/Bars, James Beard, Blue Ribbon Survey [Japan], Los 50 Mejores/Los250MX [Mexico], Tabelog Award Gold list [Japan], etc.), from training knowledge or provided research context. Only include if genuinely known/verified for this exact venue — never guess. Awards are informational, not a scoring boost (see the tastemaker framing above),
   "red_flags": ["..."],
   "one_liner": "single sentence — is it worth her time?",
   "confidence": "low|medium|high"
@@ -141,7 +141,7 @@ Method for each candidate:
      <={scale_max - 4}    → "actively avoid"
 5. closest_analog: one or more profile note names, verbatim, each wrapped as a [[wikilink]]. The analog must match the candidate's actual EXPERIENCE FORMAT — what you physically do there and how the place operates (a solo-run food kissa, a craft cocktail bar, and a dance club hosting listening sessions are three DIFFERENT formats even if all involve music and drinks). Shared tags or surface keywords ("listening", "cocktails", "coffee") are NOT enough. The user is a tastemaker who prizes deep cuts and hidden gems: her exemplar list is deliberately deep, and the BEST analog is usually a niche one — a 90-year-old proprietor's jazz kissa, a solo-bartender fruit-cocktail omakase, a records-and-lemonade kissa — not the handful of famous names that fit everything loosely. Before defaulting to a frequently-cited exemplar, scan the FULL list for a rarer, tighter format twin; citing the same 3 anchors for every candidate is a scoring failure. If no exemplar truly matches the format, return "" — an empty analog is more useful than a misleading one. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples.
-7. awards: if you genuinely know this specific candidate holds a major recognized award (Michelin, World's 50 Best, James Beard), name it. Google Places has no award data — this is the only source for it, so check your knowledge deliberately. Never guess or infer from price/reputation alone.
+7. awards: if you genuinely know this specific candidate holds a major recognized award (Michelin, World's 50 Best, James Beard, Blue Ribbon Survey, Los250MX, Tabelog Award Gold list), name it. Google Places has no award data — this is the only source for it, so check your knowledge deliberately. Never guess or infer from price/reputation alone.
 8. NEVER infer a qualitative trait (warmth, flatness, craft, soul, "trying too hard") from numeric rating proximity alone. A candidate's star rating happening to be close to a beloved or anti-signal exemplar's rating is a coincidence, not evidence — base qualitative claims only on actual text (review excerpts, editorial summary, provided research). If the only data is a bare number, say so and lower confidence instead of inventing a narrative to match it."""
 
 
@@ -179,36 +179,42 @@ def load_profile(path: Path | str | None = None, domain: str = "places") -> dict
 
 
 def build_single_prompt(profile: dict, candidate: str, extra_context: str | None = None) -> dict:
-    """Return {'system': ..., 'user': ...} for a single-venue verdict."""
+    """Return {'system': ..., 'user': ..., 'user_prefix_len': int} for a
+    single-venue verdict. user_prefix_len marks where the stable, identical-
+    across-calls profile block ends and the per-candidate content begins —
+    callers use it to mark the prefix cacheable (Anthropic prompt caching)."""
     schema = SINGLE_SCHEMA.replace("restaurant|cafe|matcha|bar|shop|other",
                                    profile.get("domain", {}).get("candidate_types", "restaurant|cafe|matcha|bar|shop|other"))
     system = _system_preamble(profile) + f"\n\nOutput STRICT JSON only, no prose outside the JSON. Schema:\n{schema}"
-    user_parts = [
+    prefix = "\n".join([
         "TASTE PROFILE (from the user's rated places):",
         "```json",
         json.dumps(_compact_profile(profile), indent=2, ensure_ascii=False),
         "```",
         "",
-        f"CANDIDATE: {candidate}",
-    ]
+    ])
+    suffix_parts = [f"CANDIDATE: {candidate}"]
     if extra_context:
-        user_parts.append(f"EXTRA CONTEXT: {extra_context}")
-    user_parts += ["", "Return the JSON verdict now."]
-    return {"system": system, "user": "\n".join(user_parts)}
+        suffix_parts.append(f"EXTRA CONTEXT: {extra_context}")
+    suffix_parts += ["", "Return the JSON verdict now."]
+    suffix = "\n".join(suffix_parts)
+    return {"system": system, "user": prefix + suffix, "user_prefix_len": len(prefix)}
 
 
 def build_batch_prompt(profile: dict, candidates: list[dict]) -> dict:
-    """Return {'system': ..., 'user': ...} for a batch of candidates.
-
-    Each candidate: {'name': str, 'context': str (optional)}.
-    """
+    """Return {'system': ..., 'user': ..., 'user_prefix_len': int} for a
+    batch of candidates. Each candidate: {'name': str, 'context': str
+    (optional)}. user_prefix_len marks the stable profile block for
+    Anthropic prompt caching, same contract as build_single_prompt."""
     system = _system_preamble(profile) + f"\n\nYou will receive N candidates. Score ALL of them, preserving order. Output STRICT JSON only:\n{BATCH_SCHEMA}"
-    user = "\n".join([
+    prefix = "\n".join([
         "TASTE PROFILE:",
         "```json",
         json.dumps(_compact_profile(profile), indent=2, ensure_ascii=False),
         "```",
         "",
+    ])
+    suffix = "\n".join([
         f"CANDIDATES (score ALL {len(candidates)}, preserve order):",
         "```json",
         json.dumps([{"name": c["name"], "context": c.get("context", "")} for c in candidates], indent=2, ensure_ascii=False),
@@ -216,7 +222,7 @@ def build_batch_prompt(profile: dict, candidates: list[dict]) -> dict:
         "",
         "Return the {\"verdicts\": [...]} JSON now.",
     ])
-    return {"system": system, "user": user}
+    return {"system": system, "user": prefix + suffix, "user_prefix_len": len(prefix)}
 
 
 # ---- Response parsing ---------------------------------------------------------
