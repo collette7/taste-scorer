@@ -48,7 +48,7 @@ CACHE_PATH = cache_path(".enrich_cache.json")
 
 FIND_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
-DETAIL_FIELDS = "name,types,formatted_address,price_level,rating,user_ratings_total,editorial_summary,url,geometry/location,photos,address_components"
+DETAIL_FIELDS = "name,types,formatted_address,price_level,rating,user_ratings_total,editorial_summary,reviews,url,geometry/location,photos,address_components"
 
 PLACE_ID_RE = re.compile(r"place_id[:=]([A-Za-z0-9_-]+)")
 MAPS_NAME_RE = re.compile(r"/maps/place/([^/@]+)")
@@ -199,12 +199,19 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
     types = [t for t in r.get("types", []) if t not in ("point_of_interest", "establishment")]
     summary = (r.get("editorial_summary") or {}).get("overview", "")
     price = PRICE.get(r.get("price_level"), "")
+    review_snippets = [
+        rv["text"].strip().replace("\n", " ")[:200]
+        for rv in (r.get("reviews") or [])[:3]
+        if rv.get("text", "").strip()
+    ]
+    reviews_bit = " || ".join(f'"{s}"' for s in review_snippets)
     bits = [
         "/".join(types) if types else "",
         price,
         f"{r.get('rating')}g ({r.get('user_ratings_total')} reviews)" if r.get("rating") else "",
         r.get("formatted_address", ""),
         summary,
+        f"review excerpts: {reviews_bit}" if reviews_bit else "",
     ]
     loc = (r.get("geometry") or {}).get("location") or {}
     photos = r.get("photos") or []
@@ -228,6 +235,7 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
         "google_rating": r.get("rating"),
         "user_ratings_total": r.get("user_ratings_total"),
         "editorial_summary": summary,
+        "review_snippets": review_snippets,
         "url": f"https://www.google.com/maps/place/?q=place_id:{place_id}",
         "lat": loc.get("lat"),
         "lng": loc.get("lng"),
