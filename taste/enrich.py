@@ -112,6 +112,21 @@ def grating_bucket(value: float, count: int) -> str:
     return f"Google public consensus: {label} ({count} reviews) — this is crowd approval, NOT her taste; do not reuse any number from this bucket as a score"
 
 
+def resolve_photo_url(keyed_url: str) -> str:
+    """Follow the Places photo redirect to the keyless googleusercontent URL
+    so the API key is never persisted in notes or shared surfaces. Falls back
+    to the keyed URL if the redirect can't be resolved."""
+    try:
+        req = urllib.request.Request(keyed_url, method="HEAD")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            final = resp.geturl()
+        if "key=" not in final:
+            return final
+    except OSError:
+        pass
+    return keyed_url
+
+
 def parse_input(raw: str) -> dict:
     """Classify input: place_id link, maps place link, or bare name."""
     raw = raw.strip()
@@ -232,7 +247,7 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
     bits = [
         "/".join(types) if types else "",
         price,
-        f"{r.get('rating')}g ({r.get('user_ratings_total')} reviews)" if r.get("rating") else "",
+        grating_bucket(r["rating"], r.get("user_ratings_total") or 0) if r.get("rating") else "",
         r.get("formatted_address", ""),
         summary,
         f"review excerpts: {reviews_bit}" if reviews_bit else "",
@@ -243,7 +258,7 @@ def _enrich_uncached(raw: str, api_key: str | None = None) -> dict:
     if photos:
         ref = photos[0].get("photo_reference", "")
         if ref:
-            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={ref}&key={api_key}"
+            photo_url = resolve_photo_url(f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={ref}&key={api_key}")
     localities = list(dict.fromkeys(
         normalize_locality(c["long_name"])
         for c in r.get("address_components", [])
