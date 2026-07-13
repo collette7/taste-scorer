@@ -7,6 +7,8 @@
   taste.py score "<candidate>" [...]  judge one or more candidates
   taste.py list <file.md> [...]       extract + score candidates from markdown
   taste.py clean <file.csv> [...]     bulk CSV pipeline (filter/dedupe/score)
+  taste.py rescore "<candidate>"      re-judge an existing record with its accumulated research
+  taste.py research "<cand>" --notes  append research to a record, save social link, re-judge
   taste.py gate "<candidate>" [...]   score-only, exit code = verdict
 
 Every subcommand forwards its remaining args unchanged, so all module flags
@@ -27,6 +29,8 @@ COMMANDS = {
     "score": "taste.score",
     "list": "taste.list_scorer",
     "clean": "taste.batch_intake",
+    "rescore": "taste.rescore",
+    "research": "taste.research",
     "gate": "taste.gate",
 }
 

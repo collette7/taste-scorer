@@ -249,6 +249,29 @@ by verdict, so nothing is silently dropped. Obsidian users get full enriched
 Place notes; everyone else gets plain markdown files in `TASTE_OUTPUT_DIR`
 (default `./taste_notes/`) automatically, no vault required.
 
+## Research + rescore (the confidence loop)
+
+First-pass scores on thin data cap out mid-scale on purpose — the judge is
+told to default to a middling score rather than invent confidence from a bare
+name and star rating. The way up is evidence:
+
+```bash
+python3 taste.py research "Some Place" --notes "12-seat solo-roaster kissaten,
+  owner roasts on a vintage Fuji Royal. https://www.instagram.com/someplace/"
+                                                  # append findings + re-judge
+python3 taste.py research "Some Place" --file findings.md --no-rescore
+python3 taste.py rescore "Some Place"             # re-judge from record as-is
+python3 taste.py rescore "Some Place" --dry-run   # show the delta, write nothing
+```
+
+`research` appends your findings to the record under a dated heading, saves
+the first Instagram link it sees as the venue's social link (`--social` to
+set it explicitly), then re-judges with the findings as context and logs the
+score delta on the record. `rescore` alone re-judges from whatever is already
+on the page. Past verdicts are stripped from the judge's context so it can't
+anchor on its own previous opinion. Both support the same BYO-model flow
+(`--prompt` out, `--verdict-json` in) as `score`.
+
 ## The scoring math (honest version)
 
 The LLM scores each dimension 1-7 and assigns it a weight 0-1 (how much that
