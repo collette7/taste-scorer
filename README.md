@@ -260,17 +260,26 @@ python3 taste.py research "Some Place" --notes "12-seat solo-roaster kissaten,
   owner roasts on a vintage Fuji Royal. https://www.instagram.com/someplace/"
                                                   # append findings + re-judge
 python3 taste.py research "Some Place" --file findings.md --no-rescore
-python3 taste.py rescore "Some Place"             # re-judge from record as-is
+python3 taste.py rescore "Some Place"             # refresh facts, then re-judge
+python3 taste.py rescore "Some Place" --no-refresh # use record contents only
 python3 taste.py rescore "Some Place" --dry-run   # show the delta, write nothing
 ```
 
 `research` appends your findings to the record under a dated heading, saves
 the first Instagram link it sees as the venue's social link (`--social` to
 set it explicitly), then re-judges with the findings as context and logs the
-score delta on the record. `rescore` alone re-judges from whatever is already
-on the page. Past verdicts are stripped from the judge's context so it can't
-anchor on its own previous opinion. Both support the same BYO-model flow
-(`--prompt` out, `--verdict-json` in) as `score`.
+score delta on the record. `rescore` also fetches current provider details and
+bypasses its disk cache before judging. Use `--no-refresh` for offline or
+cost-sensitive runs. Past verdicts are stripped from the judge's context so it
+cannot anchor on its own previous opinion. Both commands support the same
+BYO-model flow (`--prompt` out, `--verdict-json` in) as `score`.
+
+The parser rejects internally inconsistent verdicts before they reach your
+records. Low-confidence results cannot score above 5. Neighborhood weight is
+capped at 0.15. Scores of 6-7 require venue-specific product or execution
+evidence. Each one-line recommendation must start with an action that matches
+its score: `Destination`, `Route stop`, `Nearby-only`, or `Skip`. Direct LLM
+mode retries one rejected response once with the rejection reason.
 
 ## The scoring math (honest version)
 
@@ -302,6 +311,7 @@ taste-scorer/
 └── taste/                       implementation
     ├── __init__.py              public API for embedding in your own bot
     ├── rubric.py                prompt builder + verdict parser
+    ├── verdict_quality.py       evidence and score consistency checks
     ├── root.py                  rating backends: CSV / JSON / Obsidian
     ├── llm.py                   providers: Anthropic / OpenAI / Gemini / Ollama
     ├── build_profile.py         roots → profile (persona, stats, exemplars)
@@ -311,6 +321,7 @@ taste-scorer/
     ├── batch_intake.py          bulk CSV pipeline (filter/dedupe/score/report)
     ├── gate.py                  score-only, exit code = verdict (for bots)
     ├── enrich.py, enrich_tmdb.py  Places / TMDB fact resolution, cached
+    ├── rescore*.py              evidence refresh, context, and persistence
     ├── freshness.py             auto-refresh stale profiles
     ├── paths.py                 canonical file locations
     └── _env.py                  zero-dependency .env loader
