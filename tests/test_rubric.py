@@ -17,6 +17,15 @@ def minimal_profile() -> dict[str, object]:
 
 
 def verdict_payload(score: int, verdict: str) -> dict[str, object]:
+    actions = {
+        7: "Destination.",
+        6: "Route stop.",
+        5: "Nearby-only.",
+        4: "Skip.",
+        3: "Skip.",
+        2: "Skip.",
+        1: "Skip.",
+    }
     return {
         "candidate": "Test Place",
         "candidate_type": "cafe",
@@ -26,7 +35,7 @@ def verdict_payload(score: int, verdict: str) -> dict[str, object]:
         "closest_analog": "",
         "exemplars_cited": [],
         "red_flags": [],
-        "one_liner": "Test verdict.",
+        "one_liner": f"{actions[score]} Test verdict.",
         "confidence": "medium",
     }
 

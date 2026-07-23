@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 
 from taste.paths import PROJECT_ROOT as HERE
+from taste.verdict_quality import validate_evidence_consistency
+
 PROFILE_PATH = HERE / "taste_profile.json"
 
 RATING_SCALE = """Rating scale:
@@ -50,10 +52,10 @@ SINGLE_SCHEMA = """{
     {"name": "...", "score": 1-7, "weight": 0.0-1.0, "reason": "..."}
   ],
   "closest_analog": "wikilink(s) of EXACT note name(s) from the profile, e.g. \\"[[tonlist]]\\" or \\"[[Music Bar Lion]] [[Baltra Bar]]\\" — no scores, no commentary, no parentheses. Must share the candidate's experience FORMAT, not just tags/keywords. The user is a tastemaker who prizes deep cuts: prefer the LESS-CITED exemplar that fits the format precisely over a famous name that fits loosely (e.g. a tiny jazz kissa maps to [[JazzHaus POSY]], not [[Kohiko Coffee House]]; a solo-bartender omakase maps to [[Gen Yamamoto]], not [[Double Chicken Please]]). Empty string if no true format match exists — preferred over a misleading analog.",
-  "exemplars_cited": ["<top-rated item from the profile>", ...],
+  "exemplars_cited": ["<exact note name from the profile>", ...],
   "awards": ["michelin", "worldsbest", "jamesbeard", "blueribbon", "los250mx", "tabelog", ...] or [] — major recognized awards you know this SPECIFIC candidate holds (Michelin star/Bib Gourmand, World's 50 Best Restaurants/Bars, James Beard, Blue Ribbon Survey [Japan], Los 50 Mejores/Los250MX [Mexico], Tabelog Award Gold list [Japan], etc.), from training knowledge or provided research context. Only include if genuinely known/verified for this exact venue — never guess. Awards are informational, not a scoring boost (see the tastemaker framing above),
   "red_flags": ["..."],
-  "one_liner": "single sentence — is it worth her time?",
+  "one_liner": "single decisive sentence. Lead with the action: destination / route stop / nearby-only / skip. Cite only venue-specific facts supplied in candidate context. Never infer warmth, craft, curation, aesthetics, authenticity, intimacy, soul, or character from the name, neighborhood, price, or venue category.",
   "confidence": "low|medium|high"
 }"""
 
@@ -118,7 +120,6 @@ TWO DIFFERENT RATING SCALES — DO NOT CONFLATE THEM:
 - `gRating` on a new candidate is Google's public 1-5 crowd-consensus star rating — mass-market approval, not her taste. A candidate's gRating being numerically close to an exemplar's personal `rating` is MEANINGLESS (different scales, different things measured). A place can have gRating 4.6/5 (broadly loved by the public) and still be exactly the kind of flat, soulless venue she dislikes — public approval and her personal fit are independent. Treat gRating only as a weak, secondary signal for product_quality (very high or very low can be informative), never as a stand-in for her opinion.
 - BANNED reasoning pattern, do not write anything shaped like this: "gRating 3.0 mirrors [[Bar Doko]] (rated 3)" or "candidate's low gRating echoes exemplar X's rating of Y". Citing an exemplar as a comparison requires shared FORMAT or TEXTUAL evidence (a review, a description), never a coincidental number match between a 1-5 public scale and her 1-{scale_max} personal scale. If you catch yourself about to name an exemplar because its number looks like the candidate's gRating, delete that sentence and either cite real evidence or say confidence is low.
 - When a candidate has near-zero context (bare gRating and nothing else — no reviews, no description, no research), do NOT name ANY specific profile exemplar (beloved or anti-signal) in your reasoning at all, even generically ("resembles X," "echoes Y," "matching the anti-signal of Z"). There is no evidence a low-information candidate resembles anything specific. Say plainly that data is too thin to compare, set confidence to low, and let the dimension scores (not a borrowed exemplar's name) carry the judgment.
-
 The user is a TASTEMAKER: she finds places before they're discovered, prizes deep cuts and hidden gems, and actively avoids whatever the algorithm serves everyone else. Her track record proves it — she visited several venues BEFORE they won World's 50 Best recognition (Handshake Speakeasy, Bar Mauro, FORM + MATTER); awards follow her taste, they don't lead it. So treat awards as a neutral-to-mild signal, not the signal itself: judge every place on its craft-and-warmth DNA, and never boost or penalize a candidate simply because a list did or didn't notice it yet. When judging, weight what a place IS over what it's known for.
 
 She is NOT anti-upscale — she rates genuine fine dining highly when the craft is real (Sud 777: "Fine dining but in a casual garden setting. Felt natural, not performative" — a 7). Price tier is not an anti-signal. Her actual anti-signals are: (1) overpriced relative to what's delivered — paying a premium without a matching craft/quality payoff, and (2) aesthetic-over-substance traps — places engineered for photos/virality with no craft, taste, or soul behind the surface, at ANY price point (a $8 influencer-bait matcha stand is just as much an anti-signal as a $200 tasting menu coasting on plating). Judge every candidate — cheap or expensive — on whether the craft is real, not on how much it costs or how polished it looks.
@@ -142,7 +143,9 @@ Method for each candidate:
 5. closest_analog: one or more profile note names, verbatim, each wrapped as a [[wikilink]]. The analog must match the candidate's actual EXPERIENCE FORMAT — what you physically do there and how the place operates (a solo-run food kissa, a craft cocktail bar, and a dance club hosting listening sessions are three DIFFERENT formats even if all involve music and drinks). Shared tags or surface keywords ("listening", "cocktails", "coffee") are NOT enough. The user is a tastemaker who prizes deep cuts and hidden gems: her exemplar list is deliberately deep, and the BEST analog is usually a niche one — a 90-year-old proprietor's jazz kissa, a solo-bartender fruit-cocktail omakase, a records-and-lemonade kissa — not the handful of famous names that fit everything loosely. Before defaulting to a frequently-cited exemplar, scan the FULL list for a rarer, tighter format twin; citing the same 3 anchors for every candidate is a scoring failure. If no exemplar truly matches the format, return "" — an empty analog is more useful than a misleading one. Reasoning belongs in the similarity_to_loved dimension's reason, never in this field.
 6. Flag red flags — anything resembling the anti-signal examples.
 7. awards: if you genuinely know this specific candidate holds a major recognized award (Michelin, World's 50 Best, James Beard, Blue Ribbon Survey, Los250MX, Tabelog Award Gold list), name it. Google Places has no award data — this is the only source for it, so check your knowledge deliberately. Never guess or infer from price/reputation alone.
-8. NEVER infer a qualitative trait (warmth, flatness, craft, soul, "trying too hard") from numeric rating proximity alone. A candidate's star rating happening to be close to a beloved or anti-signal exemplar's rating is a coincidence, not evidence — base qualitative claims only on actual text (review excerpts, editorial summary, provided research). If the only data is a bare number, say so and lower confidence instead of inventing a narrative to match it."""
+8. NEVER infer a qualitative trait (warmth, flatness, craft, soul, "trying too hard") from numeric rating proximity alone. A candidate's star rating happening to be close to a beloved or anti-signal exemplar's rating is a coincidence, not evidence — base qualitative claims only on actual text (review excerpts, editorial summary, provided research). If the only data is a bare number, say so and lower confidence instead of inventing a narrative to match it.
+9. Evidence ceiling: a candidate with no venue-specific evidence about its actual offer or execution cannot score above 5 and must use low confidence. Address, neighborhood, city affinity, category, name, price tier, and public-rating bucket do NOT count as venue-specific evidence. They can move a thin candidate between 4 and 5 only. A 6-7 requires supplied facts such as menu/products, preparation, inventory/brands, owner/chef/bartender, service reports, operating format, editorial description, or concrete review excerpts. `neighborhood_context` weight must never exceed 0.15.
+10. One-liner contract: make the decision useful without generic research boilerplate. The first words MUST match the score: 7 = "Destination."; 6 = "Destination." or "Route stop."; 5 = "Route stop." or "Nearby-only."; 1-4 = "Skip." Then name the strongest supplied venue fact. If evidence is thin, name the candidate-type-specific gap. Do not defer the decision or invent a venue trait."""
 
 
 def _compact_profile(profile: dict) -> dict:
@@ -263,12 +266,11 @@ def parse_batch(raw: str) -> list[dict]:
 def _validate_verdict(v: Any) -> None:
     if not isinstance(v, dict):
         raise ValueError(f"verdict must be object, got {type(v).__name__}")
-    required = {"candidate", "weighted_score", "verdict", "dimensions", "one_liner"}
+    required = {"candidate", "weighted_score", "verdict", "dimensions", "one_liner", "confidence"}
     missing = required - v.keys()
     if missing:
         raise ValueError(f"verdict missing keys: {sorted(missing)}")
     if not isinstance(v["weighted_score"], int) or not 1 <= v["weighted_score"] <= 7:
         raise ValueError(f"weighted_score must be int 1-7, got {v['weighted_score']!r}")
-    if v["verdict"] not in {"go", "maybe", "skip", "actively avoid"}:
-        raise ValueError(f"invalid verdict {v['verdict']!r}")
     v["verdict"] = VERDICT_FROM_SCORE[v["weighted_score"]]
+    validate_evidence_consistency(v)
